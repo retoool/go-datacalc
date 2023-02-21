@@ -1,7 +1,10 @@
-[database]
-    [database.default]
-        link = "mysql:scada:scada@tcp(127.0.0.1:3306)/scada"
-        charset = "utf8"
+[mysql]
+    user = "root"
+    passward = "admin"
+    ip = "127.0.0.1"
+    port = "3306"
+    database = "scada"
+    charset = "utf8"
 
 [kairosdb]
     host = "192.168.26.10"

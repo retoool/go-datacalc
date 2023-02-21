@@ -2,12 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/retoool/go-kairosdb/builder"
 	"github.com/retoool/go-kairosdb/builder/grouper"
 	"github.com/retoool/go-kairosdb/builder/utils"
 	"github.com/retoool/go-kairosdb/client"
+	"time"
 )
 
 func GetKairosdb10min(startTime, endTime time.Time, metrics []string, devCodes []string) {
