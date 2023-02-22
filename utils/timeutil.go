@@ -10,6 +10,38 @@ func GetNowTime() time.Time {
 	return time.Now()
 }
 
+func StrToTime(timestr string) time.Time {
+	layout := "2006-01-02 15:04:05" // 时间字符串的格式
+	t, err := time.Parse(layout, timestr)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+func TimeToStr(t time.Time) string {
+	layout := "2006-01-02 15:04:05" // 时间字符串的格式
+	timestr := t.Format(layout)
+	return timestr
+}
+func TimeInit() (string, string) {
+	loc, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		panic(err)
+	}
+	today := time.Now().In(loc)
+	todayTime := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, loc)
+	todayTimeUnix := todayTime.Unix()
+	todayTimeStr := time.Unix(todayTimeUnix, 0).Format("2006-01-02 15:04:05")
+
+	yesterday := today.Add(-24 * time.Hour)
+	yesterdayTime := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, loc)
+	yesterdayTimeUnix := yesterdayTime.Unix()
+	yesterdayTimeStr := time.Unix(yesterdayTimeUnix, 0).Format("2006-01-02 15:04:05")
+
+	fmt.Println(yesterdayTimeStr + " to " + todayTimeStr)
+	return yesterdayTimeStr, todayTimeStr
+}
+
 // 时间切片
 func SplitTimeRanges(from_time time.Time, to_time time.Time, frequency int) [][]string {
 	time_range := make([]time.Time, 0)

@@ -1,14 +1,17 @@
+#[mysql]
+#    user = "root"
+#    password = "admin"
+#    addr = "127.0.0.1:3306"
+#    database = "test"
 [mysql]
-    user = "root"
-    passward = "admin"
-    ip = "127.0.0.1"
-    port = "3306"
+    user = "scada"
+    password = "ScAdA@2019#"
+    addr = "192.168.26.10:51016"
     database = "scada"
-    charset = "utf8"
 
 [kairosdb]
     host = "192.168.26.10"
-    port = 8008
+    port = "51017"
 
 [redis]
     infoBus = "172.201.10.11:16379,0,WuTz@DtXyTeCh.com?maxActive=200&idleTimeout=600s"  #浙江集控redis消息总线配置

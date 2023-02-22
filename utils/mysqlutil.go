@@ -2,37 +2,46 @@ package utils
 
 import (
 	"database/sql"
-	"fmt"
-
 	"github.com/go-sql-driver/mysql"
 )
 
-func GetMysql() {
+func ConnectMysql() (*sql.DB, error) {
 	cfg := mysql.Config{
-		User:   "root",
-		Passwd: "admin",
-		Net:    "tcp",
-		Addr:   "127.0.0.1:3306",
-		DBName: "t_user",
+		User:                 MysqlUser,
+		Passwd:               MysqlPassword,
+		Net:                  "tcp",
+		Addr:                 MysqlAddr,
+		DBName:               MysqlDatabase,
+		AllowNativePasswords: true,
 	}
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
-	rows, err := db.Query("select * from t_user where id = ?", "111")
+	return db, err
+
+}
+func QueryMysql(querysql string, args ...any) (*sql.Rows, error) {
+	db, err := ConnectMysql()
 	if err != nil {
-		panic(err.Error())
-	}
-	var id string
-	var name string
-	var age int
-	for rows.Next() {
-		err = rows.Scan(&id, &name, &age)
-		if err != nil {
-			panic(err.Error())
-		}
-		fmt.Println(id, name, age)
+		return nil, err
 	}
 	defer db.Close()
-
+	rows, err := db.Query(querysql, args...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, err
+}
+func ExecMysql(execsql string, args ...interface{}) error {
+	db, err := ConnectMysql()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.Exec(execsql, args...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
