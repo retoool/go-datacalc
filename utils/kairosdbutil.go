@@ -71,7 +71,7 @@ func GetKairosdb(aggr string, startTime, endTime time.Time, metrics []string, de
 		v := filter[i][1]
 		float, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			panic(err)
+			return nil
 		}
 		if s == "equal" {
 			agg = builder.CreateFilterAggregator(builder.FilterOp_EQ, float)
@@ -95,11 +95,11 @@ func GetKairosdb(aggr string, startTime, endTime time.Time, metrics []string, de
 		qb.AddMetric(metric).AddAggregator(agg).AddTag("project", devCodes)
 	}
 	cli := client.NewHttpClient(KairosDb)
-	response, err := cli.Query(qb)
+	resp, err := cli.Query(qb)
 	if err != nil {
-		panic(err)
+		return nil
 	}
-	return response
+	return resp
 }
 
 func GetKairosdb10minAVGGroup(startTime, endTime time.Time, metrics []string) *response.QueryResponse {
@@ -112,16 +112,17 @@ func GetKairosdb10minAVGGroup(startTime, endTime time.Time, metrics []string) *r
 	cli := client.NewHttpClient(KairosDb)
 	queryResponse, err := cli.Query(qb)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return queryResponse
 }
 
-func HandleRequest(response *response.QueryResponse) {
+func HandleRequest(response *response.QueryResponse) error{
 
 	jsonData, err := json.Marshal(response)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	fmt.Println(jsonData)
+	return nil
 }

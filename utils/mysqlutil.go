@@ -2,6 +2,7 @@ package utils
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -26,7 +27,12 @@ func QueryMysql(querysql string, args ...any) (*sql.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(db)
 	rows, err := db.Query(querysql, args...)
 	if err != nil {
 		return nil, err
@@ -38,7 +44,12 @@ func ExecMysql(execsql string, args ...interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(db)
 	_, err = db.Exec(execsql, args...)
 	if err != nil {
 		return err

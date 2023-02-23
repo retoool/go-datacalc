@@ -18,30 +18,45 @@ func ConnectRedis() *redis.Client {
 }
 func SetRedis(key string, value string) {
 	client := ConnectRedis()
-	defer client.Close()
+	defer func(client *redis.Client) {
+		err := client.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(client)
 	// 设置一个键值对
 	err := client.Set(key, value, 0).Err()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 }
 func GetRedis() string {
 	client := ConnectRedis()
-	defer client.Close()
+	defer func(client *redis.Client) {
+		err := client.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(client)
 	// 获取一个键的值
 	val, err := client.Get("key").Result()
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	return val
 }
 
 func DoRedis(arg ...any) {
 	client := ConnectRedis()
-	defer client.Close()
+	defer func(client *redis.Client) {
+		err := client.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(client)
 	// 执行一个Redis命令
 	err := client.Do(arg...).Err()
 	if err != nil {
-		panic(err.Error())
+		fmt.Println(err)
 	}
 }

@@ -3,8 +3,8 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -26,7 +26,7 @@ func (kairosdb *Kairosdb) NewKairosdb() {
 	kairosdb.headers = map[string]string{"content-type": "application/json"}
 }
 func KairosdbClient(pointname string, tags []string, aggr string, starttime time.Time, endtime time.Time,
-	aligntime string, minvalue string, maxvalue string, tagMatch, samplingValue string, samplingUnit string) {
+	aligntime string, minvalue string, maxvalue string, samplingValue string, samplingUnit string) *map[string]map[int64]float64{
 	beginunix := starttime.Unix()
 	endUnix := endtime.Unix()
 	var k Kairosdb
@@ -98,34 +98,29 @@ func KairosdbClient(pointname string, tags []string, aggr string, starttime time
 			a["align_end_time"] = true
 		}
 	}
-	//bodytextJson, err := json.Marshal(bodytext)
-	//if err != nil {
-	//	panic(err)
-	//}
-	//fmt.Println(string(bodytextJson))
-	response, err := sendRequest(k.Url, bodytext, k.headers)
+	result, err := sendRequest(k.Url, bodytext, k.headers)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error:",err)
+		return nil
 	}
-	defer response.Body.Close()
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, response.Body)
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		panic(err)
+	var qrmap map[string]map[int64]float64
+	for i := 0; i <len(result.QueriesArr[0].ResultsArr); i++ {
+		results := result.QueriesArr[0].ResultsArr[i]
+		points := results.DataPoints
+		tag := results.Tags["project"][0]
+		for y := 0; y < len(points); y++ {
+			value,err := points[y].Float64Value()
+			if err != nil {
+				fmt.Println(err)
+			}
+			timestamp := points[y].Timestamp()
+			qrmap[tag][timestamp] = value
+		}
 	}
-	fmt.Println(buf.String())
-
-	var data []map[string]interface{}
-	err = json.Unmarshal(buf.Bytes(), &data)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	fmt.Println(string(data))
+	return &qrmap
 }
 
-func sendRequest(url string, bodytext interface{}, headers map[string]string) (*http.Response, error) {
+func sendRequest(url string, bodytext interface{}, headers map[string]string) (*QueryResponse, error) {
 	jsonBody, err := json.Marshal(bodytext)
 	if err != nil {
 		return nil, err
@@ -138,9 +133,136 @@ func sendRequest(url string, bodytext interface{}, headers map[string]string) (*
 		req.Header.Set(key, value)
 	}
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	response, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	return resp, nil
+	contents, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	qr := NewQueryResponse(response.StatusCode)
+	err = json.Unmarshal(contents, qr)
+	if err != nil {
+		return nil, err
+	}
+	return qr, nil
 }
+type GroupResult struct {
+	Name string `json:"name,omitempty"`
+}
+
+type Results struct {
+	Name       string              `json:"name,omitempty"`
+	DataPoints []DataPoint `json:"values,omitempty"`
+	Tags       map[string][]string `json:"tags,omitempty"`
+	Group      []GroupResult       `json:"group_by,omitempty"`
+}
+
+type Queries struct {
+	SampleSize int64     `json:"sample_size,omitempty"`
+	ResultsArr []Results `json:"results,omitempty"`
+}
+
+type QueryResponse struct {
+	*Response
+	QueriesArr []Queries `json:"queries,omitempty"`
+}
+func NewQueryResponse(code int) *QueryResponse {
+	qr := &QueryResponse{
+		Response: &Response{},
+	}
+
+	qr.SetStatusCode(code)
+	return qr
+}
+
+type Response struct {
+	statusCode int
+	Errors     []string `json:"errors,omitempty"`
+}
+
+func (r *Response) SetStatusCode(code int) {
+	r.statusCode = code
+}
+
+func (r *Response) GetStatusCode() int {
+	return r.statusCode
+}
+
+func (r *Response) GetErrors() []string {
+	return r.Errors
+}
+
+// Represents a measurement. Stores the time when the measurement occurred and its value.
+type DataPoint struct {
+	timestamp int64
+	value     interface{}
+}
+
+func NewDataPoint(ts int64, val interface{}) *DataPoint {
+	return &DataPoint{
+		timestamp: ts,
+		value:     val,
+	}
+}
+
+func (dp *DataPoint) Timestamp() int64 {
+	return dp.timestamp
+}
+
+func (dp *DataPoint) Int64Value() (int64, error) {
+	val, ok := dp.value.(int64)
+	if !ok {
+		v, ok := dp.value.(int)
+		if !ok {
+			return 0, errors.New("ErrorDataPointInt64")
+		}
+		val = int64(v)
+	}
+
+	return val, nil
+}
+
+func (dp *DataPoint) Float64Value() (float64, error) {
+	val, ok := dp.value.(float64)
+	if !ok {
+		return 0,errors.New("ErrorDataPointFloat64")
+	}
+	return val, nil
+}
+
+//20191101 add by wutz (no need)
+func (dp *DataPoint) Float32Value() (float32, error) {
+	val, ok := dp.value.(float32)
+	if !ok {
+		return 0, errors.New("ErrorDataPointFloat32")
+	}
+	return val, nil
+}
+
+func (dp *DataPoint) MarshalJSON() ([]byte, error) {
+	data := []interface{}{dp.timestamp, dp.value}
+	return json.Marshal(data)
+}
+
+func (dp *DataPoint) UnmarshalJSON(data []byte) error {
+	var arr []interface{}
+	err := json.Unmarshal(data, &arr)
+	if err != nil {
+		return err
+	}
+
+	var v float64
+	ok := false
+	if v, ok = arr[0].(float64); !ok {
+		return errors.New("Invalid Timestamp type")
+	}
+
+	// Update the receiver with the values decoded.
+	dp.timestamp = int64(v)
+	dp.value = arr[1]
+
+	return nil
+}
+

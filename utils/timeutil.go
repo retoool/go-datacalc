@@ -14,7 +14,7 @@ func StrToTime(timestr string) time.Time {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式
 	t, err := time.Parse(layout, timestr)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	return t
 }
@@ -26,7 +26,7 @@ func TimeToStr(t time.Time) string {
 func TimeInit() (string, string) {
 	loc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 	today := time.Now().In(loc)
 	todayTime := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, loc)

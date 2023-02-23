@@ -6,10 +6,12 @@ type Sqldata struct {
 	fullcodeMap []string
 }
 
-func (sqldata *Sqldata) Newsqldata() {
-	sqldata.devMap = Getdev()
-	sqldata.typeMap = Gettype()
-	sqldata.GetfullcodeMap()
+func Newsqldata() *Sqldata{
+	var s Sqldata
+	s.devMap = Getdev()
+	s.typeMap = Gettype()
+	s.GetfullcodeMap()
+	return &s
 }
 func (sqldata *Sqldata) GetfullcodeMap() {
 	for key, _ := range sqldata.devMap {
