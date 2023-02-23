@@ -53,8 +53,8 @@ type scada_wind_machine struct {
 //		//}
 //		getdevattr()
 //	}
-func Getdev() map[string]V_scada_machine_group{
-	fullcodedict,err := getwindhigh()
+func Getdev() map[string]V_scada_machine_group {
+	fullcodedict, err := getwindhigh()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -83,8 +83,8 @@ func Getdev() map[string]V_scada_machine_group{
 	return devmap
 }
 
-func getwindhigh() (map[string]map[string]sql.NullString,error) {
-	SQL1 := "select t1.id, t1.code, t1.PARENT_ID from security_organization as t1 where t1.nature is not null and t1.enabled = 1"
+func getwindhigh() (map[string]map[string]sql.NullString, error) {
+	SQL1 := "select t1.id, t1.code, t1.PARENT_ID from security_organization as t1 where t1.nature is not null and t1.enabled = 1 and t1.parent_id is not null"
 	rows1, err := utils.QueryMysql(SQL1)
 	if err != nil {
 		fmt.Println(err)
@@ -96,9 +96,9 @@ func getwindhigh() (map[string]map[string]sql.NullString,error) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		orgcode,err := getorgcode(o.parent_id, o.code, rows1)
+		orgcode, err := getorgcode(o.parent_id, o.code, rows1)
 		if err != nil {
-			return nil,err
+			return nil, err
 		}
 		orgcodedict[o.id] = orgcode
 	}
@@ -121,9 +121,9 @@ func getwindhigh() (map[string]map[string]sql.NullString,error) {
 		fullcodedict[fullcode]["altitude"] = m.altitude
 		fullcodedict[fullcode]["hubHeight"] = m.hubHeight
 	}
-	return fullcodedict,nil
+	return fullcodedict, nil
 }
-func getorgcode(parentid string, code string, sqlResult *sql.Rows) (string,error) {
+func getorgcode(parentid string, code string, sqlResult *sql.Rows) (string, error) {
 	for sqlResult.Next() {
 		var o security_organization
 		err := sqlResult.Scan(&o.id, &o.code, &o.parent_id)
@@ -134,11 +134,11 @@ func getorgcode(parentid string, code string, sqlResult *sql.Rows) (string,error
 		newparentid := o.parent_id
 		if id == parentid && o.code != "root" {
 			newcode := o.code + ":" + code
-			code,err = getorgcode(newparentid, newcode, sqlResult)
+			code, err = getorgcode(newparentid, newcode, sqlResult)
 			if err != nil {
 				fmt.Println(err)
 			}
 		}
 	}
-	return code,nil
+	return code, nil
 }

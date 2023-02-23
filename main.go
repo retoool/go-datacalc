@@ -6,5 +6,5 @@ import (
 
 func main() {
 	//utils.TimeInit()
-	datacalc.Datacalc()
+	datacalc.DataCalc()
 }
