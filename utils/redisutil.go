@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"bytes"
+	"compress/zlib"
 	"fmt"
 	"github.com/go-redis/redis"
 )
@@ -8,13 +10,13 @@ import (
 func ConnectRedis() *redis.Client {
 	fmt.Println("GetRedis() run")
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "", // no password set
-		DB:       0,  // use default DB
+		Addr:        RedisAddr,
+		Password:    RedisPassword, // no password set
+		DB:          0,             // use default DB
+		MaxConnAge:  200,
+		IdleTimeout: 600,
 	})
-
 	return client
-
 }
 func SetRedis(key string, value string) {
 	client := ConnectRedis()
@@ -56,6 +58,39 @@ func DoRedis(arg ...any) {
 	}(client)
 	// 执行一个Redis命令
 	err := client.Do(arg...).Err()
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+func PublishRedis() {
+	MsgList := GetMsgInstance()
+	message := MsgList.Msg
+	client := ConnectRedis()
+	defer func(client *redis.Client) {
+		err := client.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(client)
+	var msgList string
+	for i, str := range message {
+		if i > 0 {
+			msgList += ","
+		}
+		msgList += str
+	}
+	buf := new(bytes.Buffer)
+	writer := zlib.NewWriter(buf)
+	_, err := writer.Write([]byte("," + msgList))
+	if err != nil {
+		panic(err)
+	}
+	err = writer.Close()
+	if err != nil {
+		panic(err)
+	}
+	compressedData := buf.Bytes()
+	err = client.Publish(RedisChannels, compressedData).Err()
 	if err != nil {
 		fmt.Println(err)
 	}

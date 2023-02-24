@@ -14,9 +14,9 @@
     port = "51017"
 
 [redis]
-    infoBus = "172.201.10.11:16379,0,WuTz@DtXyTeCh.com?maxActive=200&idleTimeout=600s"  #浙江集控redis消息总线配置
-    channels = ["main@scada_calcData",     # 功率偏差消息通道 当前版本暂未使用该通道
-                "alarm@DTZJJK"]    # 告警通道
+    Addr = "172.201.10.11:16379"
+    Password = "WuTz@DtXyTeCh.com"
+    channels = ["main@scada_calcData"]    # 功率偏差消息通道 当前版本暂未使用该通道
 
 [config]
     startDate = "2022-10-01"    # 补算起始日期

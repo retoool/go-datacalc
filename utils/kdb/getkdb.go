@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func KairosdbClient(pointname string, tags []string, aggr string, starttime time.Time, endtime time.Time,
+func QueryKdb(pointname string, tags []string, aggr string, starttime time.Time, endtime time.Time,
 	aligntime string, minvalue string, maxvalue string, samplingValue string, samplingUnit string) map[string][][]string {
 	beginunix := starttime.Unix()
 	endUnix := endtime.Unix()
@@ -81,7 +81,7 @@ func KairosdbClient(pointname string, tags []string, aggr string, starttime time
 			a["align_end_time"] = true
 		}
 	}
-	response, err := entity.SendRequest(k.QueryUrl, bodytext, k.Headers)
+	response, err := entity.SendRequest(k.QueryUrl, bodytext, k.Headersjson)
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println(err)
@@ -99,6 +99,10 @@ func RespToMap(resp *entity.QueryResponse) map[string][][]string {
 	for i := 0; i < len(resp.QueriesArr[0].ResultsArr); i++ {
 		results := resp.QueriesArr[0].ResultsArr[i]
 		points := results.DataPoints
+		if len(points) == 0 {
+			fmt.Println(results.Name + ",该点没有数据")
+			return nil
+		}
 		tag := results.Tags["project"][0]
 
 		for y := 0; y < len(points); y++ {

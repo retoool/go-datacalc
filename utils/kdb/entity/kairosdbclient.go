@@ -9,12 +9,13 @@ import (
 )
 
 type Kairosdb struct {
-	Server   string
-	Port     string
-	QueryUrl string
-	PushUrl  string
-	DelUrl   string
-	Headers  map[string]string
+	Server      string
+	Port        string
+	QueryUrl    string
+	PushUrl     string
+	DelUrl      string
+	Headersjson map[string]string
+	Headersgzip map[string]string
 }
 
 func NewKairosdb() Kairosdb {
@@ -24,7 +25,9 @@ func NewKairosdb() Kairosdb {
 	k.QueryUrl = fmt.Sprintf("http://%s:%s/api/v1/datapoints/query", k.Server, k.Port)
 	k.PushUrl = fmt.Sprintf("http://%s:%s/api/v1/datapoints", k.Server, k.Port)
 	k.DelUrl = fmt.Sprintf("http://%s:%s/api/v1/metric/", k.Server, k.Port)
-	k.Headers = map[string]string{"content-type": "application/json"}
+	k.Headersjson = map[string]string{"content-type": "application/json"}
+	k.Headersgzip = map[string]string{"content-type": "application/gzip"}
+
 	return k
 }
 func SendRequest(url string, bodyText interface{}, headers map[string]string) (*http.Response, error) {

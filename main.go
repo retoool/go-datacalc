@@ -1,10 +1,8 @@
 package main
 
-import (
-	"go-datacalc/datacalc"
-)
+import "go-datacalc/datacalc"
 
 func main() {
-	//utils.TimeInit()
-	datacalc.DataCalc()
+	datacalc.Run()
+
 }

@@ -1,20 +1,30 @@
 package datacalc
 
-type Sqldata struct {
-	devMap      map[string]V_scada_machine_group
-	typeMap     map[string]Scada_wind_type
-	fullcodeMap []string
+import "sync"
+
+type SqlData struct {
+	devMap    map[string]V_scada_machine_group
+	typeMap   map[string]Scada_wind_type
+	codeSlice []string
 }
 
-func Newsqldata() *Sqldata{
-	var s Sqldata
-	s.devMap = Getdev()
-	s.typeMap = Gettype()
-	s.GetfullcodeMap()
-	return &s
+var instanceSqlData *SqlData
+var onceSqlData sync.Once
+
+func GetSqlDataInstance() *SqlData {
+	onceSqlData.Do(func() {
+		instanceSqlData = &SqlData{
+			devMap:    Getdev(),
+			typeMap:   Gettype(),
+			codeSlice: GetFullCodeMap(),
+		}
+	})
+	return instanceSqlData
 }
-func (sqldata *Sqldata) GetfullcodeMap() {
-	for key, _ := range sqldata.devMap {
-		sqldata.fullcodeMap = append(sqldata.fullcodeMap, key)
+func GetFullCodeMap() []string {
+	var codeSlice []string
+	for key, _ := range Getdev() {
+		codeSlice = append(codeSlice, key)
 	}
+	return codeSlice
 }

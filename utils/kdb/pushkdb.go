@@ -44,7 +44,7 @@ func PushKdb(pointName string, datas map[string][][]string) {
 		bodys = append(bodys, body)
 	}
 	k := entity.NewKairosdb()
-	response, err := entity.SendRequest(k.PushUrl, bodys, k.Headers)
+	response, err := entity.SendRequest(k.PushUrl, bodys, k.Headersjson)
 	if err != nil {
 		fmt.Println(err)
 	}

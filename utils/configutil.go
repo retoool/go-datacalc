@@ -9,7 +9,8 @@ import (
 var (
 	KairosdbHost  = GetConfig("kairosdb.host")
 	KairosdbPort  = GetConfig("kairosdb.port")
-	RedisInfoBus  = GetConfig("redis.infobus")
+	RedisAddr     = GetConfig("redis.Addr")
+	RedisPassword = GetConfig("redis.Password")
 	RedisChannels = GetConfig("redis.channels")
 	MysqlUser     = GetConfig("mysql.user")
 	MysqlPassword = GetConfig("mysql.password")
@@ -20,11 +21,11 @@ var (
 )
 
 // 读取配置文件
-func GetConfig(name string) string{
+func GetConfig(name string) string {
 	ctx := gctx.New()
 	config, err := g.Cfg().Get(ctx, name)
 	if err != nil {
-		fmt.Println("Error:",err)
+		fmt.Println("Error:", err)
 		return ""
 	}
 	str := config.String()
