@@ -16,7 +16,8 @@ func StrToTime(timestr string) time.Time {
 	if err != nil {
 		fmt.Println(err)
 	}
-	return t
+	cst := time.FixedZone("CST", 0) // CST 时区偏移量为 UTC+8
+	return t.In(cst)
 }
 func TimeToStr(t time.Time) string {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式

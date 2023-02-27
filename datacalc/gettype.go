@@ -12,8 +12,8 @@ type Scada_wind_type struct {
 	powerCurve      []scada_theory_power_curves
 }
 type scada_theory_power_curves struct {
-	speed string
-	power string
+	speed float64
+	power float64
 }
 
 func Gettype() map[string]Scada_wind_type {

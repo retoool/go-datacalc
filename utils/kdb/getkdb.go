@@ -14,13 +14,13 @@ func QueryKdb(pointname string, tags []string, aggr string, starttime time.Time,
 	beginunix := starttime.Unix()
 	endUnix := endtime.Unix()
 	k := entity.NewKairosdb()
-	if samplingValue == "0" && samplingUnit == "" {
+	if samplingValue == "" && samplingUnit == "" {
 		samplingValue = "10"
 		samplingUnit = "years"
 	}
 	bodytext := map[string]interface{}{
 		"start_absolute": beginunix * 1000,
-		"end_absolute":   endUnix * 1000,
+		"end_absolute":   endUnix*1000 - 1,
 		"metrics": []map[string]interface{}{
 			{
 				"group_by": []map[string]interface{}{

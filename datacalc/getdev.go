@@ -1,7 +1,6 @@
 package datacalc
 
 import (
-	"database/sql"
 	"fmt"
 	"go-datacalc/utils"
 	"strings"
@@ -16,8 +15,8 @@ type V_scada_machine_group struct {
 	farm            string
 	term            string
 	dev             string
-	altitude        sql.NullString
-	hubHeight       sql.NullString
+	altitude        string
+	hubHeight       string
 }
 type security_organization struct {
 	id        string
@@ -28,8 +27,8 @@ type scada_wind_machine struct {
 	id          string
 	orgId       string
 	machineCode string
-	altitude    sql.NullString
-	hubHeight   sql.NullString
+	altitude    string
+	hubHeight   string
 }
 
 //	func Outxml() {
@@ -83,31 +82,33 @@ func Getdev() map[string]V_scada_machine_group {
 	return devmap
 }
 
-func getwindhigh() (map[string]map[string]sql.NullString, error) {
+func getwindhigh() (map[string]map[string]string, error) {
 	SQL1 := "select t1.id, t1.code, t1.PARENT_ID from security_organization as t1 where t1.nature is not null and t1.enabled = 1 and t1.parent_id is not null"
 	rows1, err := utils.QueryMysql(SQL1)
 	if err != nil {
 		fmt.Println(err)
 	}
 	orgcodedict := make(map[string]string)
+	organizations := []security_organization{}
 	for rows1.Next() {
 		var o security_organization
 		err := rows1.Scan(&o.id, &o.code, &o.parent_id)
 		if err != nil {
 			fmt.Println(err)
 		}
-		orgcode, err := getorgcode(o.parent_id, o.code, rows1)
-		if err != nil {
-			return nil, err
-		}
-		orgcodedict[o.id] = orgcode
+		organizations = append(organizations, o)
 	}
-	SQL2 := "SELECT id, org_id, machine_code, altitude, hubHeight FROM `scada_wind_machine`"
+	for _, v := range organizations {
+		orgcode := getorgcode(v.parent_id, v.code, organizations)
+		orgcodedict[v.id] = orgcode
+	}
+
+	SQL2 := "SELECT id, org_id, machine_code, altitude, hubHeight FROM `scada_wind_machine` where hubHeight is not null"
 	rows2, err := utils.QueryMysql(SQL2)
 	if err != nil {
 		fmt.Println(err)
 	}
-	fullcodedict := make(map[string]map[string]sql.NullString)
+	fullcodedict := make(map[string]map[string]string)
 	for rows2.Next() {
 		var m scada_wind_machine
 		err := rows2.Scan(&m.id, &m.orgId, &m.machineCode, &m.altitude, &m.hubHeight)
@@ -116,29 +117,22 @@ func getwindhigh() (map[string]map[string]sql.NullString, error) {
 		}
 		fullcode := orgcodedict[m.orgId] + ":" + m.machineCode
 		if fullcodedict[fullcode] == nil {
-			fullcodedict[fullcode] = make(map[string]sql.NullString)
+			fullcodedict[fullcode] = make(map[string]string)
 		}
 		fullcodedict[fullcode]["altitude"] = m.altitude
 		fullcodedict[fullcode]["hubHeight"] = m.hubHeight
 	}
 	return fullcodedict, nil
 }
-func getorgcode(parentid string, code string, sqlResult *sql.Rows) (string, error) {
-	for sqlResult.Next() {
-		var o security_organization
-		err := sqlResult.Scan(&o.id, &o.code, &o.parent_id)
-		if err != nil {
-			fmt.Println(err)
-		}
-		id := o.id
-		newparentid := o.parent_id
-		if id == parentid && o.code != "root" {
-			newcode := o.code + ":" + code
-			code, err = getorgcode(newparentid, newcode, sqlResult)
-			if err != nil {
-				fmt.Println(err)
-			}
+func getorgcode(parentid string, code string, organizations []security_organization) string {
+	for _, v := range organizations {
+		newId := v.id
+		newCode := v.code
+		newParentId := v.parent_id
+		if newId == parentid {
+			newcode := newCode + ":" + code
+			code = getorgcode(newParentId, newcode, organizations)
 		}
 	}
-	return code, nil
+	return code
 }

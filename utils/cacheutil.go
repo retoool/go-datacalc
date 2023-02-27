@@ -38,17 +38,17 @@ func SetCache(pointName string, hashKey string, timestamp int, value float64, se
 func GetCache(pointName string, hashKey string, timestamp int) (float64, error) {
 	d := GetCacheInstance()
 	if d.CacheData == nil {
-		return 0, errors.New("缓存值获取失败")
+		return 0, errors.New(pointName + ":" + hashKey + "缓存值获取失败1")
 	}
 	if d.CacheData[pointName] == nil {
-		return 0, errors.New("缓存值获取失败")
+		return 0, errors.New(pointName + ":" + hashKey + "缓存值获取失败2")
 	}
 	if d.CacheData[pointName][hashKey] == nil {
-		return 0, errors.New("缓存值获取失败")
+		return 0, errors.New(pointName + ":" + hashKey + "缓存值获取失败3")
 	}
 	if _, ok := d.CacheData[pointName][hashKey][timestamp]; ok {
 		value := d.CacheData[pointName][hashKey][timestamp]
 		return value, nil
 	}
-	return 0, errors.New("缓存值获取失败")
+	return 0, errors.New(pointName + ":" + hashKey + "缓存值获取失败4")
 }

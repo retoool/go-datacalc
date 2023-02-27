@@ -21,6 +21,7 @@ func GetSqlDataInstance() *SqlData {
 	})
 	return instanceSqlData
 }
+
 func GetFullCodeMap() []string {
 	var codeSlice []string
 	for key, _ := range Getdev() {
