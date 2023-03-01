@@ -15,18 +15,18 @@ func Run() {
 	beginTimeStr, endTimeStr := utils.TimeInit()
 	beginTime, endTime := utils.StrToTime(beginTimeStr), utils.StrToTime(endTimeStr)
 	fmt.Println("BeginTime: ", time.Now())
-	//codeMap := []string{"DTNXJK:TXFC:Q4:W125"}
 	s := GetSqlDataInstance()
 	codeMap := s.codeSlice
 	GetData(codeMap, beginTime, endTime)
 	fmt.Println("GetData() Done: ", time.Now())
 	PwrCalc(codeMap, beginTime, endTime)
 	fmt.Println("PwrCalc() Done: ", time.Now())
-	response := kdb.PushMsgToKdb()
+	CalcLostPower(beginTime, endTime)
+	fmt.Println("CalcLostPower() Done: ", time.Now())
+	//response := kdb.PushMsgToKdb()
 	fmt.Println("EndTime: ", time.Now())
-	fmt.Println("StatusCode: ", response.StatusCode)
+	//fmt.Println("StatusCode: ", response.StatusCode)
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-
 }
 func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 	WNAC_WdSpd_DEV_10m := kdb.QueryKdb("WNAC_WdSpd", devMap, "dev", beginTime, endTime, "end", "0", "50", "10", "minutes")
@@ -36,7 +36,6 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			timestamp = timestamp / 1000
 			value, err := strconv.ParseFloat(WNAC_WdSpd_DEV_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
@@ -51,7 +50,6 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			timestamp = timestamp / 1000
 			value, err := strconv.ParseFloat(WNAC_ExTmp_AVG_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
@@ -66,7 +64,6 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			timestamp = timestamp / 1000
 			value, err := strconv.ParseFloat(ActPWR_AVG_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
@@ -81,12 +78,25 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			timestamp = timestamp / 1000
 			value, err := strconv.ParseFloat(NewCalcRT_StndSt_AVG_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
 			}
 			utils.SetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp, value, true)
+		}
+	}
+	NewCalcRT_StndSt := kdb.QueryKdb("NewCalcRT_StndSt", GetSqlDataInstance().codeSlice, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
+	for hashKey := range NewCalcRT_StndSt {
+		for i := 0; i < len(NewCalcRT_StndSt[hashKey]); i++ {
+			timestamp, err := strconv.Atoi(NewCalcRT_StndSt[hashKey][i][0])
+			if err != nil {
+				fmt.Println(err)
+			}
+			value, err := strconv.ParseFloat(NewCalcRT_StndSt[hashKey][i][1], 64)
+			if err != nil {
+				fmt.Println(err)
+			}
+			utils.SetCache("NewCalcRT_StndSt", hashKey, timestamp, value, false)
 		}
 	}
 	WNAC_WdSpd_AVG_10m := kdb.QueryKdb("WNAC_WdSpd", devMap, "avg", beginTime, endTime, "end", "0", "50", "10", "minutes")
@@ -95,26 +105,27 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			timestamp, err := strconv.Atoi(WNAC_WdSpd_AVG_10m[hashKey][i][0])
 			if err != nil {
 				fmt.Println(err)
+				continue
 			}
-			timestamp = timestamp / 1000
 			value, err := strconv.ParseFloat(WNAC_WdSpd_AVG_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
+				continue
 			}
 			WNAC_ExTmpi, err := utils.GetCache("WNAC_ExTmp_AVG_10m", hashKey, timestamp)
 			if err != nil {
 				fmt.Println(err)
-				break
+				continue
 			}
 			WNAC_WdSpd_DEV_10mi, err := utils.GetCache("WNAC_WdSpd_DEV_10m", hashKey, timestamp)
 			if err != nil {
 				fmt.Println(err)
-				break
+				continue
 			}
 			NewCalcRT_StndSt_AVG_10mi, err := utils.GetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp)
 			if err != nil {
 				fmt.Println(err)
-				break
+				continue
 			}
 			if WNAC_WdSpd_DEV_10mi >= 0.001 || WNAC_ExTmpi >= 6 {
 				utils.SetCache("WNAC_WdSpd_AVG_10m", hashKey, timestamp, value, true)
@@ -131,7 +142,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			if err != nil {
 				fmt.Println(err)
 			}
-			timestamp = timestamp / 1000
+			timestamp = timestamp
 			value, err := strconv.ParseFloat(WNAC_WdSpd_MAX_10m[hashKey][i][1], 64)
 			if err != nil {
 				fmt.Println(err)
@@ -139,7 +150,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			NewCalcRT_StndSt_AVG_10mi, err := utils.GetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp)
 			if err != nil {
 				fmt.Println(err)
-				break
+				continue
 			}
 			if NewCalcRT_StndSt_AVG_10mi != 5 {
 				utils.SetCache("WNAC_WdSpd_MAX_10m", hashKey, timestamp, value, true)
@@ -157,7 +168,7 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 	}
 	for _, timestr := range timeList {
 		timeT, err := time.Parse("2006-01-02 15:04:05", timestr)
-		timestamp := int(timeT.Unix())
+		timestamp := int(timeT.UnixMilli())
 		if err != nil {
 			fmt.Println(err)
 		}

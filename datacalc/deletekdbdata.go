@@ -33,12 +33,14 @@ func DeleteKdbData() {
 		"WNAC_WdSpd_FilterAVG_10m",
 		"WNAC_WdSpd_FilterStndSt_10m",
 	}
-	beginTimeStr, endTimeStr := utils.TimeInit()
+	//beginTimeStr, endTimeStr := utils.TimeInit()
+	beginTimeStr := "2023-02-26 00:00:00"
+	endTimeStr := "2023-02-27 00:00:00"
 	beginTime, endTime := utils.StrToTime(beginTimeStr), utils.StrToTime(endTimeStr)
 	fmt.Println(beginTime, endTime)
 	//s := GetSqlDataInstance()
 	for _, v := range delMetric {
-		response := kdb.DeteleMetric(v, nil, "dev", beginTime, endTime, "none", "", "", "1", "milliseconds")
+		response := kdb.DeteleMetric(v, beginTime, endTime)
 		fmt.Println(response.StatusCode)
 	}
 

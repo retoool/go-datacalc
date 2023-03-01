@@ -1,9 +1,10 @@
 package main
 
-import "go-datacalc/datacalc"
+import "fmt"
 
 func main() {
 	//datacalc.Run()
-
-	datacalc.DeleteKdbData()
+	slice := []int{1, 2, 3}
+	slice[0] = 2
+	fmt.Println(slice)
 }

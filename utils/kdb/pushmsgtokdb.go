@@ -25,10 +25,11 @@ func PushMsgToKdb() *http.Response {
 		datas = append(datas, d)
 	}
 	jsonData, err := json.Marshal(datas)
+	//fmt.Println(string(jsonData))
 	if err != nil {
 		fmt.Println(err)
 	}
-	// 将 JSON 数据压缩
+	//将 JSON 数据压缩
 	var compressed bytes.Buffer
 	gz := gzip.NewWriter(&compressed)
 	if _, err := gz.Write(jsonData); err != nil {
@@ -37,9 +38,9 @@ func PushMsgToKdb() *http.Response {
 	if err := gz.Close(); err != nil {
 		fmt.Println(err)
 	}
-
 	k := entity.NewKairosdb()
 	req, err := http.NewRequest("POST", k.PushUrl, &compressed)
+	//req, err := http.NewRequest("POST", k.PushUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println(err)
 	}
