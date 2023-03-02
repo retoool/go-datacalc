@@ -10,11 +10,11 @@ func DeleteKdbData() {
 	delMetric := []string{
 		"WNAC_WdSpd_AVG_10m",
 		"WNAC_WdSpd_DEV_10m",
-		"WNAC_WdSpd_Interval_10m", //111
+		"WNAC_WdSpd_Interval_10m",
 		"NewCalcRT_StndSt_AVG_10m",
 		"WNAC_ExTmp_AVG_10m",
 		"ActPWR_AVG_10m",
-		"CalcRT_density_AVG_10m", //111
+		"CalcRT_density_AVG_10m",
 		"CalcRT_WdSpdStnd_AVG_10m",
 		"ActPWR_Filter_Tag",
 		"ActPWR_Filter_AVG_10m",
@@ -28,7 +28,6 @@ func DeleteKdbData() {
 		"Theory_PWR_Inter_his",
 		"Theory_PWR_Inter_Filter_his",
 		"WNAC_WdSpd_FilterAVG_10m",
-		"WNAC_WdSpd_FilterStndSt_10m",
 	}
 	beginTimeStr := "2023-01-01 00:00:00"
 	endTimeStr := "2230-03-02 00:00:00"

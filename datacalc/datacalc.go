@@ -25,9 +25,9 @@ func Run() {
 	fmt.Println("PwrCalc() Done: ", time.Now())
 	//CalcLostPower(beginTime, endTime)
 	fmt.Println("CalcLostPower() Done: ", time.Now())
-	//response := kdb.PushMsgToKdb()
+	response := kdb.PushMsgToKdb()
 	fmt.Println("EndTime: ", time.Now())
-	//fmt.Println("StatusCode: ", response.StatusCode)
+	fmt.Println("StatusCode: ", response.StatusCode)
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 }
 func HisCalc() {
@@ -206,14 +206,12 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 	s := GetSqlDataInstance()
 	frequency := 60 * 10
 	timeList := utils.SplitTimeList(beginTime, endTime, frequency)
-	fmt.Println(timeList)
 	powerCurveHisMap, err := GetPowerCurveHis(beginTime)
 	if err != nil {
 		fmt.Println(err)
 	}
 	for _, timestr := range timeList {
-		fmt.Println(timestr)
-		timeT, err := time.Parse("2006-01-02 15:04:05", timestr)
+		timeT := utils.StrToTime(timestr)
 		timestamp := int(timeT.UnixMilli())
 		if err != nil {
 			fmt.Println(err)
@@ -397,6 +395,10 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			MaxList_10m := []string{
 				"WNAC_WdSpd_MAX_10m",
 			}
+			MinList_10m := []string{
+				"WNAC_WdSpd_MIN_10m",
+			}
+
 			SumMap_10m := make(map[string][]float64)
 			for _, point := range SumList_10m {
 				pointvalue, err := utils.GetCache(point, HashKey, timestamp)
@@ -441,6 +443,20 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 				}
 				SumMap_10m[term_full+"&"+point][0] = math.Max(SumMap_10m[term_full+"&"+point][0], pointvalue)
 				SumMap_10m[farm_full+"&"+point][0] = math.Max(SumMap_10m[farm_full+"&"+point][0], pointvalue)
+			}
+			for _, point := range MinList_10m {
+				pointvalue, err := utils.GetCache(point, HashKey, timestamp)
+				if err != nil {
+					continue
+				}
+				if SumMap_10m[term_full+"&"+point] == nil {
+					SumMap_10m[term_full+"&"+point] = []float64{pointvalue, 1}
+				}
+				if SumMap_10m[farm_full+"&"+point] == nil {
+					SumMap_10m[farm_full+"&"+point] = []float64{pointvalue, 1}
+				}
+				SumMap_10m[term_full+"&"+point][0] = math.Min(SumMap_10m[term_full+"&"+point][0], pointvalue)
+				SumMap_10m[farm_full+"&"+point][0] = math.Min(SumMap_10m[farm_full+"&"+point][0], pointvalue)
 			}
 			for k, v := range SumMap_10m {
 				split := strings.Split(k, "&")
