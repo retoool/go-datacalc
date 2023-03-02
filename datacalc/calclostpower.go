@@ -66,34 +66,87 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			if _, ok := cI.CacheData["NewCalcRT_StndSt"][HashKey]; !ok {
 				continue
 			}
-			values := [][]int{}
+			stSlice := [][]int{}
 			for timestamp := range cI.CacheData["NewCalcRT_StndSt"][HashKey] {
 				if timestamp >= fromTime && timestamp <= toTime {
 					value := int(cI.CacheData["NewCalcRT_StndSt"][HashKey][timestamp])
 					code := transFmt(value, "st")
-					values = append(values, []int{timestamp, code, 0})
+					stSlice = append(stSlice, []int{timestamp, code, 0})
 				}
 			}
-			sort.Slice(values, func(i, j int) bool {
-				return values[i][0] < values[j][0]
+			sort.Slice(stSlice, func(i, j int) bool {
+				return stSlice[i][0] < stSlice[j][0]
 			})
-			if values[0][0] > fromTime {
-				values = append(values, []int{fromTime, values[0][1], 0})
+			if stSlice[0][0] > fromTime {
+				NewCalcRT_StndSt_LAST_10mi, err := utils.GetCache("NewCalcRT_StndSt_LAST_10m", HashKey, fromTime)
+				if err != nil {
+					fmt.Println(err)
+				}
+				stSlice = append(stSlice, []int{fromTime, transFmt(int(NewCalcRT_StndSt_LAST_10mi), "st"), 0})
 			}
-			if values[len(values)-1][0] < toTime {
-				values = append(values, []int{toTime, values[len(values)-1][1], 0})
+			if stSlice[len(stSlice)-1][0] < toTime {
+				stSlice = append(stSlice, []int{toTime, stSlice[len(stSlice)-1][1], 0})
 			}
-			sort.Slice(values, func(i, j int) bool {
-				return values[i][0] < values[j][0]
+			sort.Slice(stSlice, func(i, j int) bool {
+				return stSlice[i][0] < stSlice[j][0]
 			})
-			overLapArrs := findOverLap(HashKey, listing, fromTime, toTime)
-			mergeValues := mergeTimeRange(values,overLapArrs)
-			fmt.Println(mergeValues)
+			listingSlice := findOverLap(HashKey, listing, fromTime, toTime)
+			mergeSlice := mergeTimeRange(stSlice, listingSlice)
+			lostPwrMap := make(map[string]float64)
+			mergeMap := make(map[string][][]any)
+			for i := 0; i < len(mergeSlice)-1; i++ {
+				timei := mergeSlice[i+1][0] - mergeSlice[i][0]
+				codei := mergeSlice[i][1]
+				listingtag := mergeSlice[i][2]
+				codestr := utils.IntToStr(codei)
+				lostpwri := float64(timei/600000) * lostPwr
+				mergeMap[HashKey] = append(mergeMap[HashKey], []any{
+					mergeSlice[i][0],   //开始时间int
+					mergeSlice[i+1][0], //结束时间int
+					codei,              //停机原因int
+					listingtag,         //挂牌信息int
+					lostpwri,           //损失电量float64
+				})
+				if _, ok := lostPwrMap[codestr]; ok {
+					lostPwrMap[codestr] += lostpwri
+				} else {
+					lostPwrMap[codestr] = lostpwri
+				}
 
+				if _, ok := lostPwrSumMap[termFull][codestr]; ok {
+					lostPwrSumMap[termFull][codestr] += lostpwri
+				} else {
+					lostPwrSumMap[termFull][codestr] = lostpwri
+				}
+
+				if _, ok := lostPwrSumMap[farmFull][codestr]; ok {
+					lostPwrSumMap[farmFull][codestr] += lostpwri
+				} else {
+					lostPwrSumMap[farmFull][codestr] = lostpwri
+				}
+			}
+			for i := 1; i <= 12; i++ {
+				stri := utils.IntToStr(i)
+				utils.SetCache("CalcRT_LostPwr_"+stri, HashKey, toTime, 0, true)
+			}
+			for k, v := range lostPwrMap {
+				utils.SetCache("CalcRT_LostPwr_"+k, HashKey, toTime, v, true)
+			}
+		}
+		for k := range lostPwrSumMap {
+			for i := 1; i <= 12; i++ {
+				stri := utils.IntToStr(i)
+				utils.SetCache("CalcRT_LostPwr_"+stri, k, toTime, 0, true)
+			}
+			for num, v := range lostPwrSumMap[k] {
+				utils.SetCache("CalcRT_LostPwr_"+num, k, toTime, v, true)
+			}
 		}
 	}
 }
-func mergeTimeRange(stArrs,listingArrs [][]int) [][]int{
+
+// 数据融合
+func mergeTimeRange(stArrs, listingArrs [][]int) [][]int {
 	if listingArrs == nil {
 		return stArrs
 	}
@@ -101,40 +154,37 @@ func mergeTimeRange(stArrs,listingArrs [][]int) [][]int{
 		code := listing[0]
 		listing_start := listing[1]
 		listing_end := listing[2]
-		code2 := 0
-		entryi := 0
-		for i := len(stArrs) -1 ; i >= 0; i-- {
+		startexisttag := []int{0, 0}
+		endexisttag := []int{0, 0}
+		codeinnerlast := 0
+		for i := len(stArrs) - 1; i >= 0; i-- {
 			timei := stArrs[i][0]
 			codei := stArrs[i][1]
-			if timei >= listing_start && timei <= listing_end {
-				if entryi == 0 {
-					code2 = codei
-					entryi = 1
-				}
-				if timei == listing_start {
-					stArrs[i][1] = codei
-					stArrs[i][2] = 1
-				}
-				if timei == listing_end {
-					stArrs[i][1] = code
-					stArrs[i][2] = 1
-				}
+			if timei <= listing_end && timei >= listing_start {
+				codeinnerlast = codei
+			}
+			if timei == listing_start {
+				startexisttag[0] = 1
+				startexisttag[1] = i
+			}
+			if timei == listing_end {
+				endexisttag[0] = 1
+				endexisttag[1] = i
 			}
 		}
-
-		stArrs = append(stArrs, []int{listing_start, code2, 0})
-		stArrs = append(stArrs, []int{listing_end, code, 1})
+		if startexisttag[0] == 1 {
+			stArrs[startexisttag[1]][0] = listing_start
+			stArrs[startexisttag[1]][1] = code
+			stArrs[startexisttag[1]][2] = 1
+		} else {
+			stArrs = append(stArrs, []int{listing_start, code, 1})
+		}
+		if endexisttag[0] != 1 {
+			stArrs = append(stArrs, []int{listing_end, codeinnerlast, 0})
+		}
 		var filteredValues [][]int
 		for _, i := range stArrs {
 			if i[0] <= listing_start || i[0] >= listing_end {
-				for _, v := range filteredValues {
-					if v[0] == i[0] && i[2] == {
-						entryi = 2
-					}
-				}
-				if entryi == 2 {
-					continue
-				}
 				filteredValues = append(filteredValues, i)
 			}
 		}
@@ -143,8 +193,9 @@ func mergeTimeRange(stArrs,listingArrs [][]int) [][]int{
 			return stArrs[i][0] < stArrs[j][0]
 		})
 	}
-	return nil
+	return stArrs
 }
+
 // 寻找时间交集
 func findOverLap(HashKey string, listing map[string][][]int, fromtime int, totime int) [][]int {
 	if listing != nil {

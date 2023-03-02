@@ -85,6 +85,20 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			utils.SetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp, value, true)
 		}
 	}
+	NewCalcRT_StndSt_LAST_10m := kdb.QueryKdb("NewCalcRT_StndSt", devMap, "last", beginTime, endTime, "end", "", "", "10", "minutes")
+	for hashKey := range NewCalcRT_StndSt_LAST_10m {
+		for i := 0; i < len(NewCalcRT_StndSt_LAST_10m[hashKey]); i++ {
+			timestamp, err := strconv.Atoi(NewCalcRT_StndSt_LAST_10m[hashKey][i][0])
+			if err != nil {
+				fmt.Println(err)
+			}
+			value, err := strconv.ParseFloat(NewCalcRT_StndSt_LAST_10m[hashKey][i][1], 64)
+			if err != nil {
+				fmt.Println(err)
+			}
+			utils.SetCache("NewCalcRT_StndSt_LAST_10m", hashKey, timestamp, value, false)
+		}
+	}
 	NewCalcRT_StndSt := kdb.QueryKdb("NewCalcRT_StndSt", GetSqlDataInstance().codeSlice, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
 	for hashKey := range NewCalcRT_StndSt {
 		for i := 0; i < len(NewCalcRT_StndSt[hashKey]); i++ {

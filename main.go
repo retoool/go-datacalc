@@ -1,10 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"go-datacalc/datacalc"
+)
 
 func main() {
-	//datacalc.Run()
-	slice := []int{1, 2, 3}
-	slice[0] = 2
-	fmt.Println(slice)
+	datacalc.Run()
+
 }

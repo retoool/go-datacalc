@@ -53,7 +53,6 @@ func SplitTimeRanges(from_time time.Time, to_time time.Time, frequency int) [][]
 	if !from_time.Equal(to_time) {
 		time_range = append(time_range, to_time)
 	}
-	fmt.Println(time_range)
 	time_ranges := make([][]string, 0)
 	for _, item := range time_range {
 		f_time := item.Format("2006-01-02 15:04:05")
