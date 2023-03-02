@@ -13,7 +13,9 @@ import (
 
 func Run() {
 	beginTimeStr, endTimeStr := utils.TimeInit()
+	fmt.Println(beginTimeStr + " to " + endTimeStr)
 	beginTime, endTime := utils.StrToTime(beginTimeStr), utils.StrToTime(endTimeStr)
+	endTime = endTime.Add(-time.Second)
 	fmt.Println("BeginTime: ", time.Now())
 	s := GetSqlDataInstance()
 	codeMap := s.codeSlice
@@ -21,12 +23,40 @@ func Run() {
 	fmt.Println("GetData() Done: ", time.Now())
 	PwrCalc(codeMap, beginTime, endTime)
 	fmt.Println("PwrCalc() Done: ", time.Now())
-	CalcLostPower(beginTime, endTime)
+	//CalcLostPower(beginTime, endTime)
 	fmt.Println("CalcLostPower() Done: ", time.Now())
 	//response := kdb.PushMsgToKdb()
 	fmt.Println("EndTime: ", time.Now())
 	//fmt.Println("StatusCode: ", response.StatusCode)
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+}
+func HisCalc() {
+	beginTimeStr := "2023-02-28 00:00:00"
+	endTimeStr := "2023-03-01 00:00:00"
+
+	beginTime := utils.StrToTime(beginTimeStr)
+	endTime := utils.StrToTime(endTimeStr)
+	frequency := 24 * 60 * 60
+	timeList := utils.SplitTimeRanges(beginTime, endTime, frequency)
+	for _, timerange := range timeList {
+		time1str := timerange[0]
+		time2str := timerange[1]
+		fmt.Println(time1str + " to " + time2str)
+		time1, time2 := utils.StrToTime(time1str), utils.StrToTime(time2str)
+		fmt.Println("BeginTime: ", time.Now())
+		s := GetSqlDataInstance()
+		codeMap := s.codeSlice
+		GetData(codeMap, time1, time2)
+		fmt.Println("GetData() Done: ", time.Now())
+		PwrCalc(codeMap, time1, time2)
+		fmt.Println("PwrCalc() Done: ", time.Now())
+		CalcLostPower(time1, time2)
+		fmt.Println("CalcLostPower() Done: ", time.Now())
+		//response := kdb.PushMsgToKdb()
+		fmt.Println("EndTime: ", time.Now())
+		//fmt.Println("StatusCode: ", response.StatusCode)
+		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	}
 }
 func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 	WNAC_WdSpd_DEV_10m := kdb.QueryKdb("WNAC_WdSpd", devMap, "dev", beginTime, endTime, "end", "0", "50", "10", "minutes")
@@ -57,7 +87,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			utils.SetCache("WNAC_ExTmp_AVG_10m", hashKey, timestamp, value, true)
 		}
 	}
-	ActPWR_AVG_10m := kdb.QueryKdb("ActPWR", devMap, "avg", beginTime, endTime, "end", "", "", "10", "minutes")
+	ActPWR_AVG_10m := kdb.QueryKdb("ActPWR", devMap, "avg", beginTime, endTime, "end", "", "100000", "10", "minutes")
 	for hashKey := range ActPWR_AVG_10m {
 		for i := 0; i < len(ActPWR_AVG_10m[hashKey]); i++ {
 			timestamp, err := strconv.Atoi(ActPWR_AVG_10m[hashKey][i][0])
@@ -85,7 +115,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			utils.SetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp, value, true)
 		}
 	}
-	NewCalcRT_StndSt_LAST_10m := kdb.QueryKdb("NewCalcRT_StndSt", devMap, "last", beginTime, endTime, "end", "", "", "10", "minutes")
+	NewCalcRT_StndSt_LAST_10m := kdb.QueryKdb("NewCalcRT_StndSt", devMap, "last", beginTime.Add(-10*time.Minute), endTime, "end", "", "", "10", "minutes")
 	for hashKey := range NewCalcRT_StndSt_LAST_10m {
 		for i := 0; i < len(NewCalcRT_StndSt_LAST_10m[hashKey]); i++ {
 			timestamp, err := strconv.Atoi(NewCalcRT_StndSt_LAST_10m[hashKey][i][0])
@@ -176,11 +206,13 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 	s := GetSqlDataInstance()
 	frequency := 60 * 10
 	timeList := utils.SplitTimeList(beginTime, endTime, frequency)
-	powerCurveHisMap, err := GetPowerCurveHis()
+	fmt.Println(timeList)
+	powerCurveHisMap, err := GetPowerCurveHis(beginTime)
 	if err != nil {
 		fmt.Println(err)
 	}
 	for _, timestr := range timeList {
+		fmt.Println(timestr)
 		timeT, err := time.Parse("2006-01-02 15:04:05", timestr)
 		timestamp := int(timeT.UnixMilli())
 		if err != nil {
@@ -189,19 +221,19 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 		for _, HashKey := range devMap {
 			WNAC_WdSpd_AVG_10m, err := utils.GetCache("WNAC_WdSpd_AVG_10m", HashKey, timestamp)
 			if err != nil {
-				break
+				continue
 			}
 			NewCalcRT_StndSt_AVG_10m, err := utils.GetCache("NewCalcRT_StndSt_AVG_10m", HashKey, timestamp)
 			if err != nil {
-				break
+				continue
 			}
 			WNAC_ExTmp_AVG_10m, err := utils.GetCache("WNAC_ExTmp_AVG_10m", HashKey, timestamp)
 			if err != nil {
-				break
+				continue
 			}
 			ActPWR_AVG_10m, err := utils.GetCache("ActPWR_AVG_10m", HashKey, timestamp)
 			if err != nil {
-				break
+				continue
 			}
 			hashKeySplits := strings.Split(HashKey, ":")
 			project := hashKeySplits[0]
@@ -214,16 +246,19 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			windSpeedCutIn, err := utils.StrToFloat(windSpeedCutInStr)
 			if err != nil {
 				fmt.Println(HashKey + "切入风速为空")
+				continue
 			}
 			windSpeedCutOutStr := s.typeMap[windType].windSpeedCutOut
 			windSpeedCutOut, err := utils.StrToFloat(windSpeedCutOutStr)
 			if err != nil {
 				fmt.Println(HashKey + "切出风速为空")
+				continue
 			}
 			capacityStr := s.typeMap[windType].capacity
 			capacity, err := utils.StrToFloat(capacityStr)
 			if err != nil {
 				fmt.Println(HashKey + "装机容量为空")
+				continue
 			}
 			powerCurveEntity := s.typeMap[windType].powerCurve
 			powerCurve := [][]float64{}
@@ -239,10 +274,12 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			altitude, err := utils.StrToFloat(altitudeStr)
 			if err != nil {
 				fmt.Println(HashKey + "海拔高度为空")
+				continue
 			}
 			hubHeightStr := s.devMap[HashKey].hubHeight
 			if err != nil {
 				fmt.Println(HashKey + "轮毂高度为空")
+				continue
 			}
 			hubHeight, err := utils.StrToFloat(hubHeightStr)
 			P_10m := 101325 * math.Exp(-(altitude+hubHeight)*9.8/(287.05*(273.15+WNAC_ExTmp_AVG_10m))) // 10分钟大气压强
@@ -265,71 +302,67 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			entertag := 0
 			var Theory_PWR_Inter, Theory_PWR_Inter_his, Theory_PWR_Interval, Theory_PWR_Interval_his float64
 			for i := 0; i < len(powerCurve); i++ {
-				if powerCurve[i][0] > 0 {
-					var prepower, prewindspd float64
-					windspd := powerCurve[i][0]
-					power := powerCurve[i][1]
+				var prepower, prewindspd float64
+				windspd := powerCurve[i][0]
+				power := powerCurve[i][1]
+				if i == 0 {
+					prewindspd = 0.0
+					prepower = 0.0
+				} else {
+					prewindspd = powerCurve[i-1][0]
+					prepower = powerCurve[i-1][1]
+				}
+
+				if WNAC_WdSpd_Interval_10m == windspd {
+					Theory_PWR_Interval = power
+					utils.SetCache("Theory_PWR_Interval", HashKey, timestamp, Theory_PWR_Interval, true)
+				}
+
+				if power >= capacity*0.85 && entertag == 0 {
+					entertag = 1
 					if i == 0 {
-						prewindspd = 0.0
-						prepower = 0.0
-					} else {
-						prewindspd = powerCurve[i-1][0]
-						prepower = powerCurve[i-1][1]
-					}
-
-					if WNAC_WdSpd_Interval_10m == windspd {
-						Theory_PWR_Interval = power
-						utils.SetCache("Theory_PWR_Interval", HashKey, timestamp, Theory_PWR_Interval, true)
-					}
-
-					if power >= capacity*0.85 && entertag == 0 {
-						entertag = 1
-						if i == 0 {
-							if windspd == 0 {
-								maxWindSpd = 0
-							} else {
-								maxWindSpd = ((windspd-0)*(capacity*0.85-0))/(windspd-0) + prewindspd
-							}
+						if windspd == 0 {
+							maxWindSpd = 0
 						} else {
-							maxWindSpd = ((windspd-prewindspd)*(capacity*0.85-prepower))/(power-prepower) + prewindspd
+							maxWindSpd = ((windspd-0)*(capacity*0.85-0))/(windspd-0) + prewindspd
 						}
-					}
-
-					if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
-						theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
-						Theory_PWR_Inter = utils.Round(theory_pwr, 6)
-						utils.SetCache("Theory_PWR_Inter", HashKey, timestamp, Theory_PWR_Inter, true)
+					} else {
+						maxWindSpd = ((windspd-prewindspd)*(capacity*0.85-prepower))/(power-prepower) + prewindspd
 					}
 				}
+
+				if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
+					theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
+					Theory_PWR_Inter = utils.Round(theory_pwr, 6)
+					utils.SetCache("Theory_PWR_Inter", HashKey, timestamp, Theory_PWR_Inter, true)
+				}
+			}
+			if _, ok := powerCurveHisMap[HashKey]; !ok {
+				continue
 			}
 			powerCurveHis := powerCurveHisMap[HashKey]
-			if powerCurveHis == nil {
-				break
-			}
 			sort.Slice(powerCurveHis, func(i, j int) bool {
 				return powerCurveHis[i][0] < powerCurveHis[j][0]
 			})
 			for i := 0; i < len(powerCurveHis); i++ {
-				if powerCurveHis[i][0] > 0 {
-					var prepower, prewindspd float64
-					windspd := powerCurveHis[i][0]
-					power := powerCurveHis[i][1]
-					if i == 0 {
-						prewindspd = 0.0
-						prepower = 0.0
-					} else {
-						prewindspd = powerCurveHis[i-1][0]
-						prepower = powerCurveHis[i-1][1]
-					}
-					if WNAC_WdSpd_Interval_10m == windspd {
-						Theory_PWR_Interval_his = power
-						utils.SetCache("Theory_PWR_Interval_his", HashKey, timestamp, Theory_PWR_Interval_his, true)
-					}
-					if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
-						theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
-						Theory_PWR_Inter_his = utils.Round(theory_pwr, 6)
-						utils.SetCache("Theory_PWR_Inter_his", HashKey, timestamp, Theory_PWR_Inter_his, true)
-					}
+				var prepower, prewindspd float64
+				windspd := powerCurveHis[i][0]
+				power := powerCurveHis[i][1]
+				if i == 0 {
+					prewindspd = 0.0
+					prepower = 0.0
+				} else {
+					prewindspd = powerCurveHis[i-1][0]
+					prepower = powerCurveHis[i-1][1]
+				}
+				if WNAC_WdSpd_Interval_10m == windspd {
+					Theory_PWR_Interval_his = power
+					utils.SetCache("Theory_PWR_Interval_his", HashKey, timestamp, Theory_PWR_Interval_his, true)
+				}
+				if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
+					theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
+					Theory_PWR_Inter_his = utils.Round(theory_pwr, 6)
+					utils.SetCache("Theory_PWR_Inter_his", HashKey, timestamp, Theory_PWR_Inter_his, true)
 				}
 			}
 			var ActPWR_Filter_Tag float64

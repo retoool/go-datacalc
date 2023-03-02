@@ -9,15 +9,12 @@ import (
 func DeleteKdbData() {
 	delMetric := []string{
 		"WNAC_WdSpd_AVG_10m",
-		"WNAC_WdSpd_InterAVG_10m",
 		"WNAC_WdSpd_DEV_10m",
-		"WNAC_WdSpd_Interval_10m",
+		"WNAC_WdSpd_Interval_10m", //111
 		"NewCalcRT_StndSt_AVG_10m",
 		"WNAC_ExTmp_AVG_10m",
 		"ActPWR_AVG_10m",
-		"WROT_Pt1Ang_AVG_10m",
-		"WROT_Pt1Ang_MAX_10m",
-		"CalcRT_density_AVG_10m",
+		"CalcRT_density_AVG_10m", //111
 		"CalcRT_WdSpdStnd_AVG_10m",
 		"ActPWR_Filter_Tag",
 		"ActPWR_Filter_AVG_10m",
@@ -33,15 +30,13 @@ func DeleteKdbData() {
 		"WNAC_WdSpd_FilterAVG_10m",
 		"WNAC_WdSpd_FilterStndSt_10m",
 	}
-	//beginTimeStr, endTimeStr := utils.TimeInit()
-	beginTimeStr := "2023-02-26 00:00:00"
-	endTimeStr := "2023-02-27 00:00:00"
+	beginTimeStr := "2023-01-01 00:00:00"
+	endTimeStr := "2230-03-02 00:00:00"
 	beginTime, endTime := utils.StrToTime(beginTimeStr), utils.StrToTime(endTimeStr)
 	fmt.Println(beginTime, endTime)
-	//s := GetSqlDataInstance()
+
 	for _, v := range delMetric {
-		response := kdb.DeteleMetric(v, beginTime, endTime)
+		response := kdb.DeteleMetricRange(v+"ts", beginTime, endTime)
 		fmt.Println(response.StatusCode)
 	}
-
 }

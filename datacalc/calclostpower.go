@@ -20,6 +20,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 		fmt.Println(err)
 		return
 	}
+	mergeMap := make(map[string][][]any)
 	for _, timeArr := range timeRanges {
 		fromTime := int(utils.StrToTime(timeArr[0]).UnixMilli())
 		toTime := int(utils.StrToTime(timeArr[1]).UnixMilli())
@@ -39,28 +40,28 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			}
 			ActPWR_AVG_10m, err := utils.GetCache("ActPWR_AVG_10m", HashKey, toTime)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			Theory_PWR_Inter_his, err := utils.GetCache("Theory_PWR_Inter_his", HashKey, toTime)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			var lostPwr float64
 			if Theory_PWR_Inter_his > ActPWR_AVG_10m {
-				lostPwr = Theory_PWR_Inter_his - ActPWR_AVG_10m
+				lostPwr = utils.Round((Theory_PWR_Inter_his-ActPWR_AVG_10m)/6, 6)
 			}
 			utils.SetCache("CalcRT_LostPwr_All", HashKey, toTime, lostPwr/6, true)
 			if _, ok := lostPwrSumMap[termFull]["All"]; ok {
-				lostPwrSumMap[termFull]["All"] += lostPwr / 6
+				lostPwrSumMap[termFull]["All"] += lostPwr
 			} else {
-				lostPwrSumMap[termFull]["All"] = lostPwr / 6
+				lostPwrSumMap[termFull]["All"] = lostPwr
 			}
 			if _, ok := lostPwrSumMap[farmFull]["All"]; ok {
-				lostPwrSumMap[farmFull]["All"] += lostPwr / 6
+				lostPwrSumMap[farmFull]["All"] += lostPwr
 			} else {
-				lostPwrSumMap[farmFull]["All"] = lostPwr / 6
+				lostPwrSumMap[farmFull]["All"] = lostPwr
 			}
 			cI := utils.GetCacheInstance()
 			if _, ok := cI.CacheData["NewCalcRT_StndSt"][HashKey]; !ok {
@@ -81,6 +82,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 				NewCalcRT_StndSt_LAST_10mi, err := utils.GetCache("NewCalcRT_StndSt_LAST_10m", HashKey, fromTime)
 				if err != nil {
 					fmt.Println(err)
+					continue
 				}
 				stSlice = append(stSlice, []int{fromTime, transFmt(int(NewCalcRT_StndSt_LAST_10mi), "st"), 0})
 			}
@@ -93,13 +95,12 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			listingSlice := findOverLap(HashKey, listing, fromTime, toTime)
 			mergeSlice := mergeTimeRange(stSlice, listingSlice)
 			lostPwrMap := make(map[string]float64)
-			mergeMap := make(map[string][][]any)
 			for i := 0; i < len(mergeSlice)-1; i++ {
 				timei := mergeSlice[i+1][0] - mergeSlice[i][0]
 				codei := mergeSlice[i][1]
 				listingtag := mergeSlice[i][2]
 				codestr := utils.IntToStr(codei)
-				lostpwri := float64(timei/600000) * lostPwr
+				lostpwri := utils.Round(float64(timei/600000)*lostPwr, 6)
 				mergeMap[HashKey] = append(mergeMap[HashKey], []any{
 					mergeSlice[i][0],   //开始时间int
 					mergeSlice[i+1][0], //结束时间int
@@ -143,9 +144,17 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			}
 		}
 	}
+	//mergeAll(mergeMap)
 }
 
-// 数据融合
+// 全设备生命周期融合
+func mergeAll(mergeMap map[string][][]any) {
+	//for HashKey := range mergeMap {
+	//	//a := mergeMap[HashKey]
+	//}
+}
+
+// 状态&挂牌融合
 func mergeTimeRange(stArrs, listingArrs [][]int) [][]int {
 	if listingArrs == nil {
 		return stArrs

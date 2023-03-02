@@ -12,12 +12,12 @@ func GetNowTime() time.Time {
 
 func StrToTime(timestr string) time.Time {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式
-	t, err := time.Parse(layout, timestr)
+	t, err := time.ParseInLocation(layout, timestr, time.Local)
 	if err != nil {
 		fmt.Println(err)
 	}
-	cst := time.FixedZone("CST", 0) // CST 时区偏移量为 UTC+8
-	return t.In(cst)
+	return t
+
 }
 func TimeToStr(t time.Time) string {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式
@@ -38,8 +38,6 @@ func TimeInit() (string, string) {
 	yesterdayTime := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, loc)
 	yesterdayTimeUnix := yesterdayTime.Unix()
 	yesterdayTimeStr := time.Unix(yesterdayTimeUnix, 0).Format("2006-01-02 15:04:05")
-
-	fmt.Println(yesterdayTimeStr + " to " + todayTimeStr)
 	return yesterdayTimeStr, todayTimeStr
 }
 

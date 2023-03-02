@@ -10,9 +10,16 @@ import (
 	"time"
 )
 
-func GetPowerCurveHis() (map[string][][]float64, error) {
-	now := time.Now()
-	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
+func ThisMonthhisCurve() {
+	DevCalcHisMonth(time.Now())
+}
+func MonthhisCurve() {
+	calcTimeStr := "2023-02-01 00:00:00"
+	calcTime := utils.StrToTime(calcTimeStr)
+	DevCalcHisMonth(calcTime)
+}
+func GetPowerCurveHis(calcTime time.Time) (map[string][][]float64, error) {
+	thisMonth := time.Date(calcTime.Year(), calcTime.Month(), 1, 0, 0, 0, 0, time.Local)
 	thisMonthStr := thisMonth.Format("2006-01-02")
 	querysql := "select wind_code, power_curve_his from `scada_wind_power_curve_his` where curve_date = ?"
 	rows, err := utils.QueryMysql(querysql, thisMonthStr)
@@ -49,9 +56,8 @@ func GetPowerCurveHis() (map[string][][]float64, error) {
 	return powerCurveDict, nil
 }
 
-func DevCalcHisMonth() {
-	now := time.Now()
-	thisMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+func DevCalcHisMonth(calcTIme time.Time) {
+	thisMonth := time.Date(calcTIme.Year(), calcTIme.Month(), 1, 0, 0, 0, 0, calcTIme.Location())
 	beginTime := thisMonth.AddDate(0, -3, 0)
 	endTime := thisMonth
 	s := GetSqlDataInstance()
@@ -126,21 +132,68 @@ func DevCalcHisMonth() {
 	for key := range sumDict {
 		keys = append(keys, key)
 	}
-
 	// 对切片进行排序
 	sort.Strings(keys)
 
 	// 根据排好序的键遍历map
 	for _, key := range keys {
-		resultDict := make(map[string]string)
+		resultMap := make(map[string]string)
 		for windspd := range sumDict[key] {
 			value := sumDict[key][windspd][0] / sumDict[key][windspd][1]
-			resultDict[utils.FloatToStr(windspd, 1)] = utils.FloatToStr(value, 6)
+			resultMap[utils.FloatToStr(windspd, 1)] = utils.FloatToStr(value, 6)
+		}
+		theoryPowerCurve := s.typeMap[s.devMap[key].machineTypeCode].powerCurve
+		windSpeedCutIn := s.typeMap[s.devMap[key].machineTypeCode].windSpeedCutIn
+		windSpeedCutInF, err := utils.StrToFloat(windSpeedCutIn)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		windSpeedCutOut := s.typeMap[s.devMap[key].machineTypeCode].windSpeedCutOut
+		windSpeedCutOutF, err := utils.StrToFloat(windSpeedCutOut)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		for _, p := range theoryPowerCurve {
+			speed := utils.FloatToStr(p.speed, 1)
+			power := utils.FloatToStr(p.power, 1)
+
+			if p.speed >= windSpeedCutInF && p.speed <= windSpeedCutOutF {
+				if _, ok := resultMap[speed]; !ok {
+					resultMap[speed] = power
+				}
+			}
+		}
+		n := int((windSpeedCutOutF - windSpeedCutInF/0.5) + 1)
+		// Initialize the float array with the required number of elements
+		floatArr := make([]float64, n)
+		// Loop through the float array and fill it with the calculated values
+		for i := 0; i < n; i++ {
+			floatArr[i] = float64(windSpeedCutInF) + (float64(i) * 0.5)
+		}
+		for _, f := range floatArr {
+			str := utils.FloatToStr(f, 1)
+			stri := utils.FloatToStr(f-0.5, 1)
+			strj := utils.FloatToStr(f+0.5, 1)
+			if _, ok := resultMap[str]; !ok {
+				floati, err := utils.StrToFloat(resultMap[stri])
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				floatj, err := utils.StrToFloat(resultMap[strj])
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				resultMap[str] = utils.FloatToStr((floati+floatj)/2, 6)
+			}
 		}
 		windCode := key
 		windType := s.devMap[key].machineTypeCode
 		curveDate := thisMonth.Format("2006-01-02")
-		powerCurveHisjson, err := json.Marshal(resultDict)
+		powerCurveHisjson, err := json.Marshal(resultMap)
 		if err != nil {
 			fmt.Println(err)
 			break
@@ -174,7 +227,7 @@ func DevCalcHisMonth() {
 			insertList = append(insertList, fmt.Sprintf("'%s'", windType))
 			insertList = append(insertList, fmt.Sprintf("'%s'", curveDate))
 			insertList = append(insertList, fmt.Sprintf("'%s'", powerCurveHis))
-			insertSQL := fmt.Sprintf("insert into `scada_wind_power_curve_his` value (%s)", strings.Join(insertList, ","))
+			insertSQL := fmt.Sprintf("insert into scada_wind_power_curve_his value (%s)", strings.Join(insertList, ","))
 			err := utils.ExecMysql(insertSQL)
 			if err != nil {
 				fmt.Println(err)
