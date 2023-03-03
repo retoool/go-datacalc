@@ -69,8 +69,8 @@ func SplitTimeRanges(from_time time.Time, to_time time.Time, frequency int) [][]
 func SplitTimeList(from_time time.Time, to_time time.Time, frequency int) []string {
 	time_range := make([]time.Time, 0)
 	for from_time.Before(to_time) {
-		time_range = append(time_range, from_time)
 		from_time = from_time.Add(time.Duration(frequency) * time.Second)
+		time_range = append(time_range, from_time)
 	}
 	if !from_time.Equal(to_time) {
 		time_range = append(time_range, to_time)

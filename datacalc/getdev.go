@@ -7,6 +7,7 @@ import (
 )
 
 type V_scada_machine_group struct {
+	id              string
 	code            string
 	machineTypeCode string
 	lineCode        string
@@ -74,6 +75,7 @@ func Getdev() map[string]V_scada_machine_group {
 		v.farm = CODEList[1]
 		v.term = CODEList[2]
 		v.dev = CODEList[3]
+		v.id = fullcodedict[v.code]["id"]
 		v.altitude = fullcodedict[v.code]["altitude"]
 		v.hubHeight = fullcodedict[v.code]["hubHeight"]
 		devmap[v.code] = v
@@ -119,6 +121,7 @@ func getwindhigh() (map[string]map[string]string, error) {
 		if fullcodedict[fullcode] == nil {
 			fullcodedict[fullcode] = make(map[string]string)
 		}
+		fullcodedict[fullcode]["id"] = m.id
 		fullcodedict[fullcode]["altitude"] = m.altitude
 		fullcodedict[fullcode]["hubHeight"] = m.hubHeight
 	}
