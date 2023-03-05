@@ -15,7 +15,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 	endTimeStr := utils.TimeToStr(endTime)
 	frequency := 10 * 60
 	timeRanges := utils.SplitTimeRanges(beginTime, endTime, frequency)
-	listtings, err := GetListingData(beginTimeStr, endTimeStr)
+	listings, err := GetListingData(beginTimeStr, endTimeStr)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -67,7 +67,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			if _, ok := cI.CacheData["NewCalcRT_StndSt"][HashKey]; !ok {
 				continue
 			}
-			stSlice := [][]int{}
+			var stSlice [][]int
 			for timestamp := range cI.CacheData["NewCalcRT_StndSt"][HashKey] {
 				if timestamp >= fromTime && timestamp <= toTime {
 					value := int(cI.CacheData["NewCalcRT_StndSt"][HashKey][timestamp])
@@ -92,13 +92,13 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			sort.Slice(stSlice, func(i, j int) bool {
 				return stSlice[i][0] < stSlice[j][0]
 			})
-			listting := [][]int{}
-			if _, ok := listtings[HashKey]; ok {
-				listting = listtings[HashKey]
+			var listing [][]int
+			if _, ok := listings[HashKey]; ok {
+				listing = listings[HashKey]
 			}
 
-			listtingSlice := findOverLap(listting, fromTime, toTime)
-			mergeSlice := mergeTimeRange(stSlice, listtingSlice)
+			listingSlice := findOverLap(listing, fromTime, toTime)
+			mergeSlice := mergeTimeRange(stSlice, listingSlice)
 			lostPwrMap := make(map[string]float64)
 			for i := 0; i < len(mergeSlice)-1; i++ {
 				timei := mergeSlice[i+1][0] - mergeSlice[i][0]
@@ -152,18 +152,19 @@ func CalcLostPower(beginTime, endTime time.Time) {
 	resultMaps := mergeAll(mergeMap)
 	for HashKey := range resultMaps {
 		devId := GetSqlDataInstance().devMap[HashKey].id
-		sql := "SELECT end_date, ssyy_code, ssdl, listting_code, MAX(update_date) FROM `scada_wind_power_lost` where machine_id = ?"
+		sql := "SELECT id, end_date, ssyy_code, ssdl, listting_code, MAX(update_date) FROM `scada_wind_power_lost` where machine_id = ?"
 		rows, err := utils.QueryMysql(sql, devId)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
+		var id string
 		var endData string
 		var ssyyCode string
 		var ssdl float64
 		var listingCode string
 		for rows.Next() {
-			err := rows.Scan(&endData, &ssyyCode, &ssdl, &listingCode)
+			err := rows.Scan(&id, &endData, &ssyyCode, &ssdl, &listingCode)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -171,7 +172,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 		}
 		ssyyCodeInt, _ := utils.StrToInt(ssyyCode)
 		listingCodeInt, _ := utils.StrToInt(listingCode)
-
+		nowStr := utils.TimeToStr(time.Now())
 		for i := 0; i < len(resultMaps[HashKey]); i++ {
 			begintimei := resultMaps[HashKey][i][0].(int)
 			endTimei := resultMaps[HashKey][i][1].(int)
@@ -185,7 +186,28 @@ func CalcLostPower(beginTime, endTime time.Time) {
 
 			fmt.Println(HashKey, begintimeiStr, endTimeiStr, code, overTag, lostPwr)
 			if i == 0 && ssyyCodeInt == code && listingCodeInt == listingcode {
-
+				sql2 := "UPDATE `scada_wind_power_lost` SET end_date = ?, ssdl = ?, update_date = ?, MAX(update_date) FROM  where id = ?"
+				err := utils.ExecMysql(sql2, begintimeiStr, ssdl+lostPwr, nowStr,id)
+				if err != nil {
+					fmt.Println(err)
+					break
+				}
+			} else {
+				var insertList []string
+				insertList = append(insertList, "UUID()")
+				insertList = append(insertList, fmt.Sprintf("'%s'", devId))
+				insertList = append(insertList, fmt.Sprintf("'%s'", HashKey))
+				insertList = append(insertList, fmt.Sprintf("'%s'", begintimeiStr))
+				insertList = append(insertList, fmt.Sprintf("'%s'", endTimeiStr))
+				insertList = append(insertList, fmt.Sprintf("'%d'", code))
+				insertList = append(insertList, fmt.Sprintf("'%s'", transguapaicode(code)))
+				insertList = append(insertList, fmt.Sprintf("'%s'", nowStr))
+				insertList = append(insertList, fmt.Sprintf("'%s'", nowStr))
+				sql3 := fmt.Sprintf("insert into scada_wind_power_lost value (%s)",strings.Join(insertList, ","))
+				err := utils.ExecMysql(sql3)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 		}
 	}
@@ -201,7 +223,7 @@ func mergeAll(mergeMap map[string][][]any) map[string][][]any {
 	}
 	sort.Strings(keys)
 	for _, HashKey := range keys {
-		resultMap := [][]any{}
+		var resultMap [][]any
 		for i := 0; i < len(mergeMap[HashKey]); i++ {
 			begintime := mergeMap[HashKey][i][0].(int)
 			endTime := mergeMap[HashKey][i][1].(int)
@@ -243,40 +265,40 @@ func mergeTimeRange(stArrs, listtingSlice [][]int) [][]int {
 	}
 	for _, listting := range listtingSlice {
 		code := listting[0]
-		listing_start := listting[1]
-		listing_end := listting[2]
-		overtag := listting[3]
-		listingcode := listting[4]
-		startexisttag := []int{0, 0}
-		endexisttag := 0
-		codeinnerlast := 0
+		listingStart := listting[1]
+		listingEnd := listting[2]
+		overTag := listting[3]
+		listingCode := listting[4]
+		startExistTag := []int{0, 0}
+		endExistTag := 0
+		codeInnerLast := 0
 		for i := len(stArrs) - 1; i >= 0; i-- {
-			timei := stArrs[i][0]
-			codei := stArrs[i][1]
-			if timei <= listing_end && timei >= listing_start {
-				codeinnerlast = codei
+			times := stArrs[i][0]
+			codes := stArrs[i][1]
+			if times <= listingEnd && times >= listingStart {
+				codeInnerLast = codes
 			}
-			if timei == listing_start {
-				startexisttag[0] = 1
-				startexisttag[1] = i
+			if times == listingStart {
+				startExistTag[0] = 1
+				startExistTag[1] = i
 			}
-			if timei == listing_end {
-				endexisttag = 1
+			if times == listingEnd {
+				endExistTag = 1
 			}
 		}
-		if startexisttag[0] == 1 {
-			stArrs[startexisttag[1]][0] = listing_start
-			stArrs[startexisttag[1]][1] = code
-			stArrs[startexisttag[1]][2] = overtag
+		if startExistTag[0] == 1 {
+			stArrs[startExistTag[1]][0] = listingStart
+			stArrs[startExistTag[1]][1] = code
+			stArrs[startExistTag[1]][2] = overTag
 		} else {
-			stArrs = append(stArrs, []int{listing_start, code, overtag, listingcode})
+			stArrs = append(stArrs, []int{listingStart, code, overTag, listingCode})
 		}
-		if endexisttag != 1 {
-			stArrs = append(stArrs, []int{listing_end, codeinnerlast, 0, listingcode})
+		if endExistTag != 1 {
+			stArrs = append(stArrs, []int{listingEnd, codeInnerLast, 0, listingCode})
 		}
 		var filteredValues [][]int
 		for _, i := range stArrs {
-			if i[0] <= listing_start || i[0] >= listing_end {
+			if i[0] <= listingStart || i[0] >= listingEnd {
 				filteredValues = append(filteredValues, i)
 			}
 		}
@@ -289,26 +311,26 @@ func mergeTimeRange(stArrs, listtingSlice [][]int) [][]int {
 }
 
 // 挂牌记录切分
-func findOverLap(listting [][]int, fromtime int, totime int) [][]int {
-	if len(listting) == 0 {
+func findOverLap(listing [][]int, fromTime int, toTime int) [][]int {
+	if len(listing) == 0 {
 		return nil
 	}
-	listtingSlice := [][]int{}
-	for i := 0; i < len(listting); i++ {
-		code := listting[i][0]
+	var listingSlice [][]int
+	for i := 0; i < len(listing); i++ {
+		code := listing[i][0]
 		recode := transFmt(code, "guapai")
-		begintime_sec := listting[i][1]
-		endtime_sec := listting[i][2]
-		overtag := listting[i][3]
-		listingcode := listting[i][4]
+		beginTimeSec := listing[i][1]
+		endTimeSec := listing[i][2]
+		overTag := listing[i][3]
+		listingCode := listing[i][4]
 		//寻找时间区间交集
-		overlap_start := int(math.Max(float64(begintime_sec), float64(fromtime)))
-		overlap_end := int(math.Min(float64(endtime_sec), float64(totime)))
-		if overlap_start < overlap_end {
-			listtingSlice = append(listtingSlice, []int{recode, overlap_start, overlap_end, overtag, listingcode})
+		overlapStart := int(math.Max(float64(beginTimeSec), float64(fromTime)))
+		overlapEnd := int(math.Min(float64(endTimeSec), float64(toTime)))
+		if overlapStart < overlapEnd {
+			listingSlice = append(listingSlice, []int{recode, overlapStart, overlapEnd, overTag, listingCode})
 		}
 	}
-	return listtingSlice
+	return listingSlice
 }
 
 // GetListingData 获取挂牌信息
@@ -412,4 +434,36 @@ func transFmt(code int, fmt string) int {
 		}
 	}
 	return -1
+}
+
+func transguapaicode(code int)string {
+	switch code {
+	case 1:
+		return "覆冰停机"
+	case 2:
+		return "调度限电"
+	case 3:
+		return "输变电计划停运"
+	case 4:
+		return "输变电非计划停运"
+	case 5:
+		return "暴风停机"
+	case 6:
+		return "环境超温"
+	case 7:
+		return "故障维护"
+	case 8:
+		return "定检维护"
+	case 9:
+		return "计划检修"
+	case 10:
+		return "机组故障"
+	case 11:
+		return "自降容"
+	case 12:
+		return "电网检修"
+	case 13:
+		return "电网故障"
+	}
+	return ""
 }
