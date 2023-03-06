@@ -3,6 +3,7 @@ package datacalc
 import (
 	"fmt"
 	"go-datacalc/utils"
+	"go-datacalc/utils/kdb"
 	"time"
 )
 
@@ -19,15 +20,13 @@ func Run() {
 	fmt.Println("PwrCalc() Done: ", time.Now())
 	CalcLostPower(beginTime, endTime)
 	fmt.Println("CalcLostPower() Done: ", time.Now())
-	//response := kdb.PushMsgToKdb()
-	//fmt.Println("StatusCode: ", response.StatusCode)
+	response := kdb.PushMsgToKdb()
+	fmt.Println("StatusCode: ", response.StatusCode)
 	fmt.Println("EndTime: ", time.Now())
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 }
-func HisCalc() {
-	beginTimeStr := "2023-02-28 00:00:00"
-	endTimeStr := "2023-03-01 00:00:00"
-
+func HisCalc(beginTimeStr, endTimeStr string) {
+	fmt.Println(beginTimeStr + " to " + endTimeStr)
 	beginTime := utils.StrToTime(beginTimeStr)
 	endTime := utils.StrToTime(endTimeStr)
 	frequency := 24 * 60 * 60
@@ -46,9 +45,9 @@ func HisCalc() {
 		fmt.Println("PwrCalc() Done: ", time.Now())
 		CalcLostPower(time1, time2)
 		fmt.Println("CalcLostPower() Done: ", time.Now())
-		//response := kdb.PushMsgToKdb()
+		response := kdb.PushMsgToKdb()
 		fmt.Println("EndTime: ", time.Now())
-		//fmt.Println("StatusCode: ", response.StatusCode)
+		fmt.Println("StatusCode: ", response.StatusCode)
 		fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 	}
 }

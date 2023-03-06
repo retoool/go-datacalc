@@ -19,6 +19,13 @@ var (
 
 	KairosDb = "http://" + KairosdbHost + ":" + KairosdbPort
 )
+var (
+	HisCalcBeginTime = GetConfig("task.hiscalcbegintime")
+	HisCalcEndTime   = GetConfig("task.hiscalcendtime")
+	HisCurveCalcTime = GetConfig("task.hiscalccalctime")
+	DelDataBeginTime = GetConfig("task.deldatabegintime")
+	DelDataEndTime   = GetConfig("task.deldataendtime")
+)
 
 // 读取配置文件
 func GetConfig(name string) string {
@@ -26,6 +33,7 @@ func GetConfig(name string) string {
 	config, err := g.Cfg().Get(ctx, name)
 	if err != nil {
 		fmt.Println("Error:", err)
+		fmt.Println("配置文件读取失败：" + name)
 		return ""
 	}
 	str := config.String()

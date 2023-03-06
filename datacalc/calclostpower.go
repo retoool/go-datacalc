@@ -1,6 +1,7 @@
 package datacalc
 
 import (
+	"database/sql"
 	"fmt"
 	"go-datacalc/utils"
 	"math"
@@ -104,7 +105,8 @@ func CalcLostPower(beginTime, endTime time.Time) {
 				timei := mergeSlice[i+1][0] - mergeSlice[i][0]
 				codei := mergeSlice[i][1]
 				codestr := utils.IntToStr(codei)
-				lostpwri := utils.Round(float64(timei/600000)*lostPwr, 6)
+				lostPwrf := float64(timei) / 600000.0 * lostPwr
+				lostpwri := utils.Round(lostPwrf, 6)
 				mergeMap[HashKey] = append(mergeMap[HashKey], []any{
 					mergeSlice[i][0],   //开始时间int
 					mergeSlice[i+1][0], //结束时间int
@@ -150,48 +152,66 @@ func CalcLostPower(beginTime, endTime time.Time) {
 		}
 	}
 	resultMaps := mergeAll(mergeMap)
-	for HashKey := range resultMaps {
-		devId := GetSqlDataInstance().devMap[HashKey].id
-		sql := "SELECT id, end_date, ssyy_code, ssdl, listting_code, MAX(update_date) FROM `scada_wind_power_lost` where machine_id = ?"
-		rows, err := utils.QueryMysql(sql, devId)
+	var updateStatements []string
+	var insertStmts []string
+	sql1map := make(map[string][]string)
+	sql1 := "SELECT id, machine_code, ssyy_code, ssdl, listing_code, MAX(update_date) FROM `scada_wind_power_lost` where update_date < ? group by machine_id"
+	rows, err := utils.QueryMysql(sql1, beginTimeStr)
+	if err != nil {
+		fmt.Println(err, "select1")
+	}
+	var id sql.NullString
+	var machineCode sql.NullString
+	var ssyyCode sql.NullString
+	var ssdl sql.NullString
+	var listingCode sql.NullString
+	var updateDate sql.NullString
+	for rows.Next() {
+		err := rows.Scan(&id, &machineCode, &ssyyCode, &ssdl, &listingCode, &updateDate)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println(err, "select2")
 			continue
 		}
-		var id string
-		var endData string
-		var ssyyCode string
-		var ssdl float64
-		var listingCode string
-		for rows.Next() {
-			err := rows.Scan(&id, &endData, &ssyyCode, &ssdl, &listingCode)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
+		sql1map[machineCode.String] = []string{
+			id.String,
+			ssyyCode.String,
+			ssdl.String,
+			listingCode.String,
 		}
-		ssyyCodeInt, _ := utils.StrToInt(ssyyCode)
-		listingCodeInt, _ := utils.StrToInt(listingCode)
-		nowStr := utils.TimeToStr(time.Now())
+	}
+	var keylist []string
+	for HashKey := range resultMaps {
+		keylist = append(keylist, HashKey)
+	}
+	sort.Strings(keylist)
+	for _, HashKey := range keylist {
+		devId := GetSqlDataInstance().devMap[HashKey].id
+		var keyid string
+		var ssdlf float64
+		var ssyyCodeInt int
+		var listingCodeInt int
+		if _, ok := sql1map[devId]; ok {
+			smd := sql1map[devId]
+			keyid = smd[0]
+			ssdlf, _ = utils.StrToFloat(smd[2])
+			ssyyCodeInt, _ = utils.StrToInt(smd[1])
+			listingCodeInt, _ = utils.StrToInt(smd[3])
+		}
+		nowStr := utils.TimetoStrD(time.Now())
+		if _, ok := resultMaps[HashKey]; !ok {
+			continue
+		}
 		for i := 0; i < len(resultMaps[HashKey]); i++ {
 			begintimei := resultMaps[HashKey][i][0].(int)
 			endTimei := resultMaps[HashKey][i][1].(int)
 			code := resultMaps[HashKey][i][2].(int)
-			overTag := resultMaps[HashKey][i][3].(int)
 			lostPwr := resultMaps[HashKey][i][4].(float64)
 			listingcode := resultMaps[HashKey][i][5].(int)
-
 			begintimeiStr := utils.TimeToStr(time.UnixMilli(int64(begintimei)))
 			endTimeiStr := utils.TimeToStr(time.UnixMilli(int64(endTimei)))
-
-			fmt.Println(HashKey, begintimeiStr, endTimeiStr, code, overTag, lostPwr)
-			if i == 0 && ssyyCodeInt == code && listingCodeInt == listingcode {
-				sql2 := "UPDATE `scada_wind_power_lost` SET end_date = ?, ssdl = ?, update_date = ?, MAX(update_date) FROM  where id = ?"
-				err := utils.ExecMysql(sql2, begintimeiStr, ssdl+lostPwr, nowStr,id)
-				if err != nil {
-					fmt.Println(err)
-					break
-				}
+			if i == 0 && ssyyCodeInt == code && listingCodeInt == listingcode && keyid != "" {
+				sql2 := fmt.Sprintf("UPDATE `scada_wind_power_lost` SET end_date = '%s', ssdl = %f, update_date = '%s' WHERE id = %d", begintimeiStr, ssdlf+lostPwr, nowStr, id)
+				updateStatements = append(updateStatements, sql2)
 			} else {
 				var insertList []string
 				insertList = append(insertList, "UUID()")
@@ -200,15 +220,43 @@ func CalcLostPower(beginTime, endTime time.Time) {
 				insertList = append(insertList, fmt.Sprintf("'%s'", begintimeiStr))
 				insertList = append(insertList, fmt.Sprintf("'%s'", endTimeiStr))
 				insertList = append(insertList, fmt.Sprintf("'%d'", code))
-				insertList = append(insertList, fmt.Sprintf("'%s'", transguapaicode(code)))
+				insertList = append(insertList, fmt.Sprintf("'%s'", translostcode(code)))
+				insertList = append(insertList, fmt.Sprintf("%f", lostPwr))                        //损失电量
+				insertList = append(insertList, fmt.Sprintf("'%d'", listingcode))                  //挂牌编码
+				insertList = append(insertList, fmt.Sprintf("'%s'", transguapaicode(listingcode))) //挂牌名称
 				insertList = append(insertList, fmt.Sprintf("'%s'", nowStr))
 				insertList = append(insertList, fmt.Sprintf("'%s'", nowStr))
-				sql3 := fmt.Sprintf("insert into scada_wind_power_lost value (%s)",strings.Join(insertList, ","))
-				err := utils.ExecMysql(sql3)
-				if err != nil {
-					fmt.Println(err)
-				}
+				insertStmts = append(insertStmts, fmt.Sprintf("(%s)", strings.Join(insertList, ",")))
+
 			}
+		}
+		if len(updateStatements) > 50000 {
+			err := utils.ExecBatchMysql(updateStatements, nil)
+			if err != nil {
+				fmt.Println(err, "batch update")
+			}
+			updateStatements = nil
+		}
+		if len(insertStmts) > 50000 {
+			sql3 := fmt.Sprintf("INSERT INTO scada_wind_power_lost VALUES %s", strings.Join(insertStmts, ","))
+			err := utils.ExecMysql(sql3)
+			if err != nil {
+				fmt.Println(err, "insert")
+			}
+			insertStmts = nil
+		}
+	}
+	if len(updateStatements) > 0 {
+		err := utils.ExecBatchMysql(updateStatements, nil)
+		if err != nil {
+			fmt.Println(err, "batch update")
+		}
+	}
+	if len(insertStmts) > 0 {
+		sql3 := fmt.Sprintf("INSERT INTO scada_wind_power_lost VALUES %s", strings.Join(insertStmts, ","))
+		err := utils.ExecMysql(sql3)
+		if err != nil {
+			fmt.Println(err, "insert")
 		}
 	}
 }
@@ -235,7 +283,7 @@ func mergeAll(mergeMap map[string][][]any) map[string][][]any {
 				overTag += 0
 			}
 			if len(resultMap) == 0 {
-				resultMap = append(resultMap, []any{begintime, endTime, code, overTag, lostPwr})
+				resultMap = append(resultMap, []any{begintime, endTime, code, overTag, lostPwr, listingcode})
 				continue
 			}
 			lastResult := resultMap[len(resultMap)-1]
@@ -336,8 +384,8 @@ func findOverLap(listing [][]int, fromTime int, toTime int) [][]int {
 // GetListingData 获取挂牌信息
 func GetListingData(dayTimeStr, todayTimeStr string) (map[string][][]int, error) {
 	resultsDict := make(map[string][][]int)
-	sql := "SELECT t.device,t.listingNo,t.realBgnTm,t.realEndTm from scada_listing_result_his t where realBgnTm >= ? and realEndTm <= ?"
-	rows, err := utils.QueryMysql(sql, dayTimeStr, todayTimeStr)
+	selectsql := "SELECT t.device,t.listingNo,t.realBgnTm,t.realEndTm from scada_listing_result_his t where realBgnTm >= ? and realEndTm <= ?"
+	rows, err := utils.QueryMysql(selectsql, dayTimeStr, todayTimeStr)
 	if err != nil {
 		return nil, err
 	}
@@ -436,7 +484,7 @@ func transFmt(code int, fmt string) int {
 	return -1
 }
 
-func transguapaicode(code int)string {
+func transguapaicode(code int) string {
 	switch code {
 	case 1:
 		return "覆冰停机"
@@ -464,6 +512,36 @@ func transguapaicode(code int)string {
 		return "电网检修"
 	case 13:
 		return "电网故障"
+	}
+	return ""
+}
+
+func translostcode(code int) string {
+	switch code {
+	case 1:
+		return "正常发电损失"
+	case 2:
+		return "环境因素受累损失"
+	case 3:
+		return "风电机组计划停运损失"
+	case 4:
+		return "风电机组故障损失"
+	case 5:
+		return "未知损失"
+	case 6:
+		return "风电机组自降容损失"
+	case 7:
+		return "风电机组技术待命损失"
+	case 8:
+		return "电网故障损失"
+	case 9:
+		return "电网限电损失"
+	case 10:
+		return "输变电非计划停运损失"
+	case 11:
+		return "输变电计划停运损失"
+	case 12:
+		return "电网检修损失"
 	}
 	return ""
 }

@@ -1,0 +1,28 @@
+[mysql]#本地
+    user = "scada"
+    password = "ScAdA@2019#"
+    addr = "192.168.26.10:51016"
+    database = "scada"
+# [mysql]#宁夏
+#    user = "scada"
+#    password = "ScAdA@2019#"
+#    addr = "172.10.200.13:3306"
+#    database = "scada"
+
+[kairosdb]#本地
+
+    host = "192.168.26.10"
+    port = "51017"
+# [kairosdb]#宁夏
+    # host = "172.10.200.13"
+    # port = "8008"
+
+[task]
+    [hiscalc]
+        begintime = "2023-03-01 00:00:00"
+        endtime = "2023-03-06 00:00:00"
+    [hiscurve]
+        calctime = "2023-03-01 00:00:00"
+    [deldata]
+        begintime = "2023-03-01 00:00:00"
+        endtime = "2023-03-06 00:00:00"

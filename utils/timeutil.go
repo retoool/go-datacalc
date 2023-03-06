@@ -5,11 +5,6 @@ import (
 	"time"
 )
 
-// 获取当前时间
-func GetNowTime() time.Time {
-	return time.Now()
-}
-
 func StrToTime(timestr string) time.Time {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式
 	t, err := time.ParseInLocation(layout, timestr, time.Local)
@@ -21,6 +16,12 @@ func StrToTime(timestr string) time.Time {
 }
 func TimeToStr(t time.Time) string {
 	layout := "2006-01-02 15:04:05" // 时间字符串的格式
+	timestr := t.Format(layout)
+	return timestr
+}
+
+func TimetoStrD(t time.Time) string {
+	layout := "2006-01-02" // 时间字符串的格式
 	timestr := t.Format(layout)
 	return timestr
 }

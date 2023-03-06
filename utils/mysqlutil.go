@@ -56,3 +56,34 @@ func ExecMysql(execsql string, args ...interface{}) error {
 	}
 	return nil
 }
+func ExecBatchMysql(sqls []string, params [][]interface{}) error {
+	db, err := ConnectMysql()
+	if err != nil {
+		return err
+	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(db)
+	//开启事务
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	for i, sql := range sqls {
+		_, err := tx.Exec(sql, params[i]...)
+		if err != nil {
+			// 发生错误，回滚事务
+			tx.Rollback()
+			return err
+		}
+	}
+	// 提交事务
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}

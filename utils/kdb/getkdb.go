@@ -99,12 +99,11 @@ func RespToMap(resp *entity.QueryResponse) map[string][][]string {
 	for i := 0; i < len(resp.QueriesArr[0].ResultsArr); i++ {
 		results := resp.QueriesArr[0].ResultsArr[i]
 		points := results.DataPoints
-		if len(points) == 0 {
-			fmt.Println(results.Name + ",该点没有数据")
-			return nil
-		}
 		tag := results.Tags["project"][0]
-
+		if len(points) == 0 {
+			fmt.Println(tag + ":" + results.Name + ",未查询到数据")
+			continue
+		}
 		for y := 0; y < len(points); y++ {
 			value, err := points[y].Float64Value()
 			valuestr := fmt.Sprintf("%.6f", value)

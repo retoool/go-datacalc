@@ -13,11 +13,6 @@ import (
 func ThisMonthhisCurve() {
 	DevCalcHisMonth(time.Now())
 }
-func MonthhisCurve() {
-	calcTimeStr := "2023-02-01 00:00:00"
-	calcTime := utils.StrToTime(calcTimeStr)
-	DevCalcHisMonth(calcTime)
-}
 func GetPowerCurveHis(calcTime time.Time) (map[string][][]float64, error) {
 	thisMonth := time.Date(calcTime.Year(), calcTime.Month(), 1, 0, 0, 0, 0, time.Local)
 	thisMonthStr := thisMonth.Format("2006-01-02")
@@ -57,6 +52,8 @@ func GetPowerCurveHis(calcTime time.Time) (map[string][][]float64, error) {
 }
 
 func DevCalcHisMonth(calcTIme time.Time) {
+	fmt.Println("DevCalcHisMonth() Run")
+	fmt.Println("HisCurveTime: " + utils.TimeToStr(calcTIme))
 	thisMonth := time.Date(calcTIme.Year(), calcTIme.Month(), 1, 0, 0, 0, 0, calcTIme.Location())
 	beginTime := thisMonth.AddDate(0, -3, 0)
 	endTime := thisMonth

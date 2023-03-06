@@ -32,7 +32,7 @@ func SetCache(pointName string, hashKey string, timestamp int, value float64, se
 	}
 	d.CacheData[pointName][hashKey][timestamp] = value
 	if setMsgList == true {
-		SetMsgOne(pointName+"ts", hashKey, timestamp, value)
+		SetMsgOne(pointName, hashKey, timestamp, value)
 	}
 }
 
