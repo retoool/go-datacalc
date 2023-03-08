@@ -6,12 +6,14 @@ import (
 	flag "github.com/spf13/pflag"
 	"go-datacalc/datacalc"
 	"go-datacalc/utils"
+	"time"
 )
 
 func main() {
 	var task string
 	flag.StringVarP(&task, "task", "t", "", "The task")
 	flag.Parse()
+	fmt.Println("main()")
 	switch task {
 	case "":
 		RunCron()
@@ -26,26 +28,35 @@ func main() {
 
 func RunCron() {
 	c := cron.New()
-	// 每天0点10分触发
 	err := c.AddFunc("10 0 * * *", func() {
 		datacalc.Run()
-	})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	// 每月1日0点10分触发
-	err = c.AddFunc("10 0 1 * *", func() {
-		datacalc.ThisMonthhisCurve()
+		datacalc.RunPlusPoint()
+
+		nowTime := time.Now()
+		layout := "2006-01-02 15:04:05"
+		t, err := time.Parse(layout, utils.TimeToStr(nowTime))
+		if err != nil {
+			fmt.Println("解析时间字符串失败：", err)
+			return
+		}
+		if t.Day() == 1 {
+			datacalc.DevCalcHisMonth(nowTime)
+		}
 	})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	c.Start()
+
+	select {}
 }
 
 func RunHisCalc() {
+	if utils.HisCalcBeginTime == "" || utils.HisCalcEndTime == "" {
+		fmt.Println("未读取到配置文件")
+		return
+	}
 	beginTimeStr := utils.HisCalcBeginTime
 	endTimeStr := utils.HisCalcEndTime
 	beginTime := utils.StrToTime(beginTimeStr)
@@ -57,10 +68,23 @@ func RunHisCalc() {
 		fromTimeStr := ranges[0]
 		toTimeStr := ranges[1]
 		datacalc.HisCalc(fromTimeStr, toTimeStr)
+		layout := "2006-01-02 15:04:05"
+		t, err := time.Parse(layout, toTimeStr)
+		if err != nil {
+			fmt.Println("解析时间字符串失败：", err)
+			return
+		}
+		if t.Day() == 1 {
+			datacalc.DevCalcHisMonth(utils.StrToTime(toTimeStr))
+		}
 	}
 }
 
 func RunMonthHisCurve() {
+	if utils.HisCurveCalcTime == "" {
+		fmt.Println("未读取到配置文件")
+		return
+	}
 	calcTimeStr := utils.HisCurveCalcTime
 	fmt.Println("HisCurveCalcTime: " + calcTimeStr)
 	calcTime := utils.StrToTime(calcTimeStr)
@@ -68,6 +92,10 @@ func RunMonthHisCurve() {
 }
 
 func RunDeleteData() {
+	if utils.DelDataBeginTime == "" || utils.DelDataEndTime == "" {
+		fmt.Println("未读取到配置文件")
+		return
+	}
 	beginTimeStr := utils.DelDataBeginTime
 	endTimeStr := utils.DelDataEndTime
 	datacalc.DeleteKdbData(beginTimeStr, endTimeStr)

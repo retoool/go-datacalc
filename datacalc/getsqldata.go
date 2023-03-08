@@ -3,9 +3,9 @@ package datacalc
 import "sync"
 
 type SqlData struct {
-	devMap    map[string]V_scada_machine_group
-	typeMap   map[string]Scada_wind_type
-	codeSlice []string
+	DevMap    map[string]V_scada_machine_group
+	TypeMap   map[string]Scada_wind_type
+	CodeSlice []string
 }
 
 var instanceSqlData *SqlData
@@ -14,9 +14,9 @@ var onceSqlData sync.Once
 func GetSqlDataInstance() *SqlData {
 	onceSqlData.Do(func() {
 		instanceSqlData = &SqlData{
-			devMap:    Getdev(),
-			typeMap:   Gettype(),
-			codeSlice: GetFullCodeMap(),
+			DevMap:    Getdev(),
+			TypeMap:   Gettype(),
+			CodeSlice: GetFullCodeMap(),
 		}
 	})
 	return instanceSqlData

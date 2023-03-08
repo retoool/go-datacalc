@@ -10,9 +10,6 @@ import (
 	"time"
 )
 
-func ThisMonthhisCurve() {
-	DevCalcHisMonth(time.Now())
-}
 func GetPowerCurveHis(calcTime time.Time) (map[string][][]float64, error) {
 	thisMonth := time.Date(calcTime.Year(), calcTime.Month(), 1, 0, 0, 0, 0, time.Local)
 	thisMonthStr := thisMonth.Format("2006-01-02")
@@ -58,7 +55,7 @@ func DevCalcHisMonth(calcTIme time.Time) {
 	beginTime := thisMonth.AddDate(0, -3, 0)
 	endTime := thisMonth
 	s := GetSqlDataInstance()
-	codeMap := s.codeSlice
+	codeMap := s.CodeSlice
 	windSpdMap := kdb.QueryKdb("WNAC_WdSpd_Interval_10m", codeMap, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
 	pwrMap := kdb.QueryKdb("ActPWR_Fitting_AVG_10m", codeMap, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
 	spdDict := make(map[string]map[int]float64)
@@ -79,12 +76,12 @@ func DevCalcHisMonth(calcTIme time.Time) {
 				fmt.Println(err)
 				continue
 			}
-			windType := s.devMap[key].machineTypeCode
-			windSpeedCutIn, err := utils.StrToFloat(s.typeMap[windType].windSpeedCutIn)
+			windType := s.DevMap[key].machineTypeCode
+			windSpeedCutIn, err := utils.StrToFloat(s.TypeMap[windType].windSpeedCutIn)
 			if err != nil {
 				fmt.Println(err)
 			}
-			windSpeedCutOut, err := utils.StrToFloat(s.typeMap[windType].windSpeedCutOut)
+			windSpeedCutOut, err := utils.StrToFloat(s.TypeMap[windType].windSpeedCutOut)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -139,14 +136,14 @@ func DevCalcHisMonth(calcTIme time.Time) {
 			value := sumDict[key][windspd][0] / sumDict[key][windspd][1]
 			resultMap[utils.FloatToStr(windspd, 1)] = utils.FloatToStr(value, 6)
 		}
-		theoryPowerCurve := s.typeMap[s.devMap[key].machineTypeCode].powerCurve
-		windSpeedCutIn := s.typeMap[s.devMap[key].machineTypeCode].windSpeedCutIn
+		theoryPowerCurve := s.TypeMap[s.DevMap[key].machineTypeCode].powerCurve
+		windSpeedCutIn := s.TypeMap[s.DevMap[key].machineTypeCode].windSpeedCutIn
 		windSpeedCutInF, err := utils.StrToFloat(windSpeedCutIn)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		windSpeedCutOut := s.typeMap[s.devMap[key].machineTypeCode].windSpeedCutOut
+		windSpeedCutOut := s.TypeMap[s.DevMap[key].machineTypeCode].windSpeedCutOut
 		windSpeedCutOutF, err := utils.StrToFloat(windSpeedCutOut)
 		if err != nil {
 			fmt.Println(err)
@@ -188,7 +185,7 @@ func DevCalcHisMonth(calcTIme time.Time) {
 			}
 		}
 		windCode := key
-		windType := s.devMap[key].machineTypeCode
+		windType := s.DevMap[key].machineTypeCode
 		curveDate := thisMonth.Format("2006-01-02")
 		powerCurveHisjson, err := json.Marshal(resultMap)
 		if err != nil {

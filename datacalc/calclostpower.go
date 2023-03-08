@@ -26,7 +26,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 		fromTime := int(utils.StrToTime(timeArr[0]).UnixMilli())
 		toTime := int(utils.StrToTime(timeArr[1]).UnixMilli())
 		lostPwrSumMap := make(map[string]map[string]float64)
-		for _, HashKey := range GetSqlDataInstance().codeSlice {
+		for _, HashKey := range GetSqlDataInstance().CodeSlice {
 			publishChList := strings.Split(HashKey, ":")
 			project := publishChList[0]
 			farm := publishChList[1]
@@ -82,7 +82,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 			if stSlice[0][0] > fromTime {
 				NewCalcRT_StndSt_LAST_10mi, err := utils.GetCache("NewCalcRT_StndSt_LAST_10m", HashKey, fromTime)
 				if err != nil {
-					fmt.Println(err)
+					//fmt.Println(err)
 					continue
 				}
 				stSlice = append(stSlice, []int{fromTime, transFmt(int(NewCalcRT_StndSt_LAST_10mi), "st"), 0, 0})
@@ -185,7 +185,7 @@ func CalcLostPower(beginTime, endTime time.Time) {
 	}
 	sort.Strings(keylist)
 	for _, HashKey := range keylist {
-		devId := GetSqlDataInstance().devMap[HashKey].id
+		devId := GetSqlDataInstance().DevMap[HashKey].id
 		var keyid string
 		var ssdlf float64
 		var ssyyCodeInt int

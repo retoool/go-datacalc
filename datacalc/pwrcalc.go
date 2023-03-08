@@ -47,26 +47,26 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			term := hashKeySplits[2]
 			term_full := strings.Join([]string{project, farm, term}, ":")
 			farm_full := strings.Join([]string{project, farm}, ":")
-			windType := s.devMap[HashKey].machineTypeCode
-			windSpeedCutInStr := s.typeMap[windType].windSpeedCutIn
+			windType := s.DevMap[HashKey].machineTypeCode
+			windSpeedCutInStr := s.TypeMap[windType].windSpeedCutIn
 			windSpeedCutIn, err := utils.StrToFloat(windSpeedCutInStr)
 			if err != nil {
 				fmt.Println(HashKey + "切入风速为空")
 				continue
 			}
-			windSpeedCutOutStr := s.typeMap[windType].windSpeedCutOut
+			windSpeedCutOutStr := s.TypeMap[windType].windSpeedCutOut
 			windSpeedCutOut, err := utils.StrToFloat(windSpeedCutOutStr)
 			if err != nil {
 				fmt.Println(HashKey + "切出风速为空")
 				continue
 			}
-			capacityStr := s.typeMap[windType].capacity
+			capacityStr := s.TypeMap[windType].capacity
 			capacity, err := utils.StrToFloat(capacityStr)
 			if err != nil {
 				fmt.Println(HashKey + "装机容量为空")
 				continue
 			}
-			powerCurveEntity := s.typeMap[windType].powerCurve
+			powerCurveEntity := s.TypeMap[windType].powerCurve
 			powerCurve := [][]float64{}
 			for _, v := range powerCurveEntity {
 				speed := v.speed
@@ -76,13 +76,13 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 			sort.Slice(powerCurve, func(i, j int) bool {
 				return powerCurve[i][0] < powerCurve[j][0]
 			})
-			altitudeStr := s.devMap[HashKey].altitude
+			altitudeStr := s.DevMap[HashKey].altitude
 			altitude, err := utils.StrToFloat(altitudeStr)
 			if err != nil {
 				fmt.Println(HashKey + "海拔高度为空")
 				continue
 			}
-			hubHeightStr := s.devMap[HashKey].hubHeight
+			hubHeightStr := s.DevMap[HashKey].hubHeight
 			if err != nil {
 				fmt.Println(HashKey + "轮毂高度为空")
 				continue
@@ -138,37 +138,48 @@ func PwrCalc(devMap []string, beginTime time.Time, endTime time.Time) {
 				}
 
 				if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
-					theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
+					var theory_pwr float64
+					if windspd == prewindspd {
+						theory_pwr = prepower
+					} else {
+						theory_pwr = ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
+					}
 					Theory_PWR_Inter = utils.Round(theory_pwr, 6)
 					utils.SetCache("Theory_PWR_Inter", HashKey, timestamp, Theory_PWR_Inter, true)
 				}
 			}
-			if _, ok := powerCurveHisMap[HashKey]; !ok {
-				continue
-			}
-			powerCurveHis := powerCurveHisMap[HashKey]
-			sort.Slice(powerCurveHis, func(i, j int) bool {
-				return powerCurveHis[i][0] < powerCurveHis[j][0]
-			})
-			for i := 0; i < len(powerCurveHis); i++ {
-				var prepower, prewindspd float64
-				windspd := powerCurveHis[i][0]
-				power := powerCurveHis[i][1]
-				if i == 0 {
-					prewindspd = 0.0
-					prepower = 0.0
-				} else {
-					prewindspd = powerCurveHis[i-1][0]
-					prepower = powerCurveHis[i-1][1]
-				}
-				if WNAC_WdSpd_Interval_10m == windspd {
-					Theory_PWR_Interval_his = power
-					utils.SetCache("Theory_PWR_Interval_his", HashKey, timestamp, Theory_PWR_Interval_his, true)
-				}
-				if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
-					theory_pwr := ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
-					Theory_PWR_Inter_his = utils.Round(theory_pwr, 6)
-					utils.SetCache("Theory_PWR_Inter_his", HashKey, timestamp, Theory_PWR_Inter_his, true)
+			if _, ok := powerCurveHisMap[HashKey]; ok {
+				powerCurveHis := powerCurveHisMap[HashKey]
+				sort.Slice(powerCurveHis, func(i, j int) bool {
+					return powerCurveHis[i][0] < powerCurveHis[j][0]
+				})
+				for i := 0; i < len(powerCurveHis); i++ {
+					var prepower, prewindspd float64
+					windspd := powerCurveHis[i][0]
+					power := powerCurveHis[i][1]
+					if i == 0 {
+						prewindspd = 0.0
+						prepower = 0.0
+					} else {
+						prewindspd = powerCurveHis[i-1][0]
+						prepower = powerCurveHis[i-1][1]
+					}
+					if WNAC_WdSpd_Interval_10m == windspd {
+						Theory_PWR_Interval_his = power
+						utils.SetCache("Theory_PWR_Interval_his", HashKey, timestamp, Theory_PWR_Interval_his, true)
+					}
+					if prewindspd <= windspd_stnd && windspd_stnd <= windspd {
+						var theory_pwr float64
+						if windspd == prewindspd {
+							theory_pwr = prepower
+						} else {
+							theory_pwr = ((power-prepower)*(windspd_stnd-prewindspd))/(windspd-prewindspd) + prepower
+						}
+						Theory_PWR_Inter_his = utils.Round(theory_pwr, 6)
+						if Theory_PWR_Inter_his < 100000 {
+							utils.SetCache("Theory_PWR_Inter_his", HashKey, timestamp, Theory_PWR_Inter_his, true)
+						}
+					}
 				}
 			}
 			var ActPWR_Filter_Tag float64

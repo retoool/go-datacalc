@@ -2,6 +2,8 @@ package datacalc
 
 import (
 	"fmt"
+	"github.com/gogf/gf/v2/frame/g"
+	"github.com/gogf/gf/v2/os/gctx"
 	"go-datacalc/utils"
 	"go-datacalc/utils/kdb"
 	"strconv"
@@ -80,7 +82,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			utils.SetCache("NewCalcRT_StndSt_LAST_10m", hashKey, timestamp, value, false)
 		}
 	}
-	NewCalcRT_StndSt := kdb.QueryKdb("NewCalcRT_StndSt", GetSqlDataInstance().codeSlice, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
+	NewCalcRT_StndSt := kdb.QueryKdb("NewCalcRT_StndSt", GetSqlDataInstance().CodeSlice, "sum", beginTime, endTime, "", "", "", "1", "milliseconds")
 	for hashKey := range NewCalcRT_StndSt {
 		for i := 0; i < len(NewCalcRT_StndSt[hashKey]); i++ {
 			timestamp, err := strconv.Atoi(NewCalcRT_StndSt[hashKey][i][0])
@@ -109,17 +111,17 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			}
 			WNAC_ExTmpi, err := utils.GetCache("WNAC_ExTmp_AVG_10m", hashKey, timestamp)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			WNAC_WdSpd_DEV_10mi, err := utils.GetCache("WNAC_WdSpd_DEV_10m", hashKey, timestamp)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			NewCalcRT_StndSt_AVG_10mi, err := utils.GetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			if WNAC_WdSpd_DEV_10mi >= 0.001 || WNAC_ExTmpi >= 6 {
@@ -144,7 +146,7 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			}
 			NewCalcRT_StndSt_AVG_10mi, err := utils.GetCache("NewCalcRT_StndSt_AVG_10m", hashKey, timestamp)
 			if err != nil {
-				fmt.Println(err)
+				//fmt.Println(err)
 				continue
 			}
 			if NewCalcRT_StndSt_AVG_10mi != 5 {
@@ -152,4 +154,40 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			}
 		}
 	}
+}
+
+func RunPlusPoint() {
+	fmt.Println("RunPlusPoint() Run")
+	beginTimeStr, endTimeStr := utils.TimeInit()
+	fmt.Println(beginTimeStr + " to " + endTimeStr)
+	beginTime := utils.StrToTime(beginTimeStr)
+	endTime := utils.StrToTime(endTimeStr)
+	PlusPoint(beginTime, endTime)
+	fmt.Println("PlusPoint() Done")
+	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+}
+func PlusPoint(beginTime time.Time, endTime time.Time) {
+	ctx := gctx.New()
+	data, err := g.Cfg().Data(ctx)
+	if err != nil {
+		fmt.Println(err)
+	}
+	for calcpoint, v := range data["pluspoints"].(map[string]any) {
+		if calcpoint == "example" {
+			continue
+		}
+		var condition map[string]any
+		condition = v.(map[string]any)
+		point := condition["point"].(string)
+		aggr := condition["aggr"].(string)
+		minValue := condition["minValue"].(string)
+		maxValue := condition["maxValue"].(string)
+		samplingUnit := condition["samplingUnit"].(string)
+		samplingValue := condition["samplingValue"].(string)
+		fmt.Println(point, aggr, minValue, maxValue, samplingValue, samplingUnit)
+		result := kdb.QueryKdb(point, GetSqlDataInstance().CodeSlice, aggr, beginTime, endTime.Add(-time.Second), "end", minValue, maxValue, samplingValue, samplingUnit)
+		fmt.Println(calcpoint + " calculated")
+		kdb.PushKdb(calcpoint, result)
+	}
+
 }

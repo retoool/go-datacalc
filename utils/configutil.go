@@ -19,10 +19,11 @@ var (
 
 	KairosDb = "http://" + KairosdbHost + ":" + KairosdbPort
 )
+
 var (
 	HisCalcBeginTime = GetConfig("task.hiscalcbegintime")
 	HisCalcEndTime   = GetConfig("task.hiscalcendtime")
-	HisCurveCalcTime = GetConfig("task.hiscalccalctime")
+	HisCurveCalcTime = GetConfig("task.hiscurvecalctime")
 	DelDataBeginTime = GetConfig("task.deldatabegintime")
 	DelDataEndTime   = GetConfig("task.deldataendtime")
 )

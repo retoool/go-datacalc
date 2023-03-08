@@ -99,6 +99,10 @@ func RespToMap(resp *entity.QueryResponse) map[string][][]string {
 	for i := 0; i < len(resp.QueriesArr[0].ResultsArr); i++ {
 		results := resp.QueriesArr[0].ResultsArr[i]
 		points := results.DataPoints
+		if len(results.Tags["project"]) <= 0 {
+			fmt.Println(results.Name + ",未查询到数据")
+			continue
+		}
 		tag := results.Tags["project"][0]
 		if len(points) == 0 {
 			fmt.Println(tag + ":" + results.Name + ",未查询到数据")

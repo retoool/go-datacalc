@@ -8,7 +8,6 @@ import (
 	"go-datacalc/utils"
 	"go-datacalc/utils/kdb/entity"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -25,7 +24,6 @@ func PushMsgToKdb() *http.Response {
 		datas = append(datas, d)
 	}
 	jsonData, err := json.Marshal(datas)
-	//fmt.Println(string(jsonData))
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -71,11 +69,11 @@ func ParseSensorData(str string) (*SensorData, error) {
 	value := parts2[0]
 	time := parts2[1]
 
-	timeint, err := strconv.Atoi(time)
+	timeint, err := utils.StrToInt(time)
 	if err != nil {
 		fmt.Println(err)
 	}
-	valuefloat, err := strconv.ParseFloat(value, 64)
+	valuefloat, err := utils.StrToFloat(value)
 	if err != nil {
 		fmt.Println(err)
 	}

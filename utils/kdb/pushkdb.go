@@ -20,6 +20,7 @@ func NewData(devName string, dataPoints [][]any, tags map[string]string) PushDat
 	}
 	return p
 }
+
 func PushKdb(pointName string, datas map[string][][]string) {
 	var bodys []PushData
 	for devName := range datas {
