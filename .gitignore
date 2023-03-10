@@ -1,0 +1,6 @@
+.idea
+.vscode
+config/
+config/config.toml
+*.toml
+*.prof
