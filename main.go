@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/robfig/cron"
+	cron "github.com/robfig/cron/v3"
 	flag "github.com/spf13/pflag"
 	"go-datacalc/datacalc"
 	"go-datacalc/utils"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"runtime"
+	"runtime/pprof"
 	"time"
 )
 
@@ -25,30 +31,69 @@ func main() {
 		RunDeleteData()
 	}
 }
+func runpprof() {
+	//http://localhost:6060/debug/pprof/
+	//go tool pprof http://localhost:6060/debug/pprof/profile
 
-func RunCron() {
-	c := cron.New()
-	err := c.AddFunc("10 0 * * *", func() {
-		datacalc.Run()
-		datacalc.RunPlusPoint()
+	runtime.GOMAXPROCS(1)              // 限制 CPU 使用数，避免过载
+	runtime.SetMutexProfileFraction(1) // 开启对锁调用的跟踪
+	runtime.SetBlockProfileRate(1)     // 开启对阻塞操作的跟踪
 
-		nowTime := time.Now()
-		layout := "2006-01-02 15:04:05"
-		t, err := time.Parse(layout, utils.TimeToStr(nowTime))
-		if err != nil {
-			fmt.Println("解析时间字符串失败：", err)
-			return
+	go func() {
+		// 启动一个 http server，注意 pprof 相关的 handler 已经自动注册过了
+		if err := http.ListenAndServe(":6060", nil); err != nil {
+			log.Fatal(err)
 		}
-		if t.Day() == 1 {
-			datacalc.DevCalcHisMonth(nowTime)
-		}
-	})
+		os.Exit(0)
+	}()
+}
+
+// go tool pprof heap.prof
+func testpprof() {
+	f, err := os.Create("cpu.prof")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	c.Start()
+	defer f.Close()
 
+	if err := pprof.StartCPUProfile(f); err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer pprof.StopCPUProfile()
+
+	// 运行您的计算进程
+	datacalc.Run()
+	utils.GetCacheInstance().CacheData = nil
+	utils.GetMsgInstance().Msg = nil
+
+	datacalc.Run()
+	utils.GetCacheInstance().CacheData = nil
+	utils.GetMsgInstance().Msg = nil
+
+	// 创建一个heap profile
+	f, err = os.Create("heap.prof")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+
+	pprof.WriteHeapProfile(f)
+}
+
+func RunCron() {
+	runpprof()
+	c := cron.New()
+	c.AddFunc("10 0 * * *", func() {
+		datacalc.Run()
+		nowTime := time.Now()
+		if nowTime.Day() == 1 {
+			datacalc.DevCalcHisMonth(nowTime)
+		}
+	})
+	c.Start()
 	select {}
 }
 
@@ -68,14 +113,9 @@ func RunHisCalc() {
 		fromTimeStr := ranges[0]
 		toTimeStr := ranges[1]
 		datacalc.HisCalc(fromTimeStr, toTimeStr)
-		layout := "2006-01-02 15:04:05"
-		t, err := time.Parse(layout, toTimeStr)
-		if err != nil {
-			fmt.Println("解析时间字符串失败：", err)
-			return
-		}
-		if t.Day() == 1 {
-			datacalc.DevCalcHisMonth(utils.StrToTime(toTimeStr))
+		toTime := utils.StrToTime(toTimeStr)
+		if toTime.Day() == 1 {
+			datacalc.DevCalcHisMonth(toTime)
 		}
 	}
 }

@@ -2,8 +2,6 @@ package datacalc
 
 import (
 	"fmt"
-	"github.com/gogf/gf/v2/frame/g"
-	"github.com/gogf/gf/v2/os/gctx"
 	"go-datacalc/utils"
 	"go-datacalc/utils/kdb"
 	"strconv"
@@ -154,40 +152,4 @@ func GetData(devMap []string, beginTime time.Time, endTime time.Time) {
 			}
 		}
 	}
-}
-
-func RunPlusPoint() {
-	fmt.Println("RunPlusPoint() Run")
-	beginTimeStr, endTimeStr := utils.TimeInit()
-	fmt.Println(beginTimeStr + " to " + endTimeStr)
-	beginTime := utils.StrToTime(beginTimeStr)
-	endTime := utils.StrToTime(endTimeStr)
-	PlusPoint(beginTime, endTime)
-	fmt.Println("PlusPoint() Done")
-	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-}
-func PlusPoint(beginTime time.Time, endTime time.Time) {
-	ctx := gctx.New()
-	data, err := g.Cfg().Data(ctx)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for calcpoint, v := range data["pluspoints"].(map[string]any) {
-		if calcpoint == "example" {
-			continue
-		}
-		var condition map[string]any
-		condition = v.(map[string]any)
-		point := condition["point"].(string)
-		aggr := condition["aggr"].(string)
-		minValue := condition["minValue"].(string)
-		maxValue := condition["maxValue"].(string)
-		samplingUnit := condition["samplingUnit"].(string)
-		samplingValue := condition["samplingValue"].(string)
-		fmt.Println(point, aggr, minValue, maxValue, samplingValue, samplingUnit)
-		result := kdb.QueryKdb(point, GetSqlDataInstance().CodeSlice, aggr, beginTime, endTime.Add(-time.Second), "end", minValue, maxValue, samplingValue, samplingUnit)
-		fmt.Println(calcpoint + " calculated")
-		kdb.PushKdb(calcpoint, result)
-	}
-
 }

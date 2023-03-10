@@ -23,6 +23,8 @@ func Run() {
 	response := kdb.PushMsgToKdb()
 	fmt.Println("PushMsgToKdb() Done: ", time.Now())
 	fmt.Println("StatusCode: ", response.StatusCode)
+	utils.GetCacheInstance().CacheData = nil
+	utils.GetMsgInstance().Msg = nil
 	fmt.Println("EndTime: ", time.Now())
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 }
@@ -40,6 +42,8 @@ func HisCalc(beginTimeStr, endTimeStr string) {
 	fmt.Println("CalcLostPower() Done: ", time.Now())
 	response := kdb.PushMsgToKdb()
 	fmt.Println("StatusCode: ", response.StatusCode)
+	utils.GetCacheInstance().CacheData = nil
+	utils.GetMsgInstance().Msg = nil
 	fmt.Println("EndTime: ", time.Now())
 	fmt.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 }

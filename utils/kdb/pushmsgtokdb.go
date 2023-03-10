@@ -48,6 +48,7 @@ func PushMsgToKdb() *http.Response {
 	if err != nil {
 		fmt.Println(err)
 	}
+
 	return response
 }
 
